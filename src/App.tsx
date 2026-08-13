@@ -289,6 +289,7 @@ export default function App() {
       <PersonalSettingsPage
         restaurants={restaurants}
         categories={appSettings.categories}
+        areaOrder={appSettings.areaOrder}
         settings={personalSettings}
         onSaved={setPersonalSettings}
         isSignedIn={!!authUser}
@@ -349,6 +350,8 @@ export default function App() {
             selectedId={selectedId}
             categories={appSettings.categories}
             cuisineCategories={appSettings.cuisineCategories}
+            areaOrder={appSettings.areaOrder}
+            cuisineOrder={appSettings.cuisineOrder}
             areaFilter={areaFilter}
             onAreaFilterChange={setAreaFilter}
             cuisineFilter={cuisineFilter}

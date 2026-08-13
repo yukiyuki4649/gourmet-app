@@ -3,6 +3,18 @@ export interface AreaCategory {
   areas: string[];
 }
 
+/**
+ * Orders `items` by a manually-chosen `order` list. Items present in `order` come first,
+ * in that order; anything not yet ranked (e.g. a brand-new area from a just-added
+ * restaurant) is appended afterward, sorted alphabetically among itself.
+ */
+export function sortByOrder(items: string[], order: string[]): string[] {
+  const rank = new Map(order.map((name, i) => [name, i]));
+  const ranked = items.filter(i => rank.has(i)).sort((a, b) => rank.get(a)! - rank.get(b)!);
+  const unranked = items.filter(i => !rank.has(i)).sort((a, b) => a.localeCompare(b));
+  return [...ranked, ...unranked];
+}
+
 const AREA_PREFIX = 'area:';
 const CATEGORY_PREFIX = 'category:';
 

@@ -3,7 +3,7 @@ import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { Restaurant } from '../types/restaurant';
 import { MapCenter } from '../lib/appSettings';
 import { PersonalSettings, savePersonalSettings } from '../lib/personalSettings';
-import { AreaCategory, buildFilterGroups } from '../lib/categories';
+import { AreaCategory, buildFilterGroups, sortByOrder } from '../lib/categories';
 import { GOOGLE_MAPS_LIBRARIES } from '../lib/googleMapsLibraries';
 
 const containerStyle = {
@@ -16,6 +16,7 @@ const FALLBACK_CENTER: MapCenter = { lat: 35.6762, lng: 139.6503 };
 interface PersonalSettingsPageProps {
   restaurants: Restaurant[];
   categories: AreaCategory[];
+  areaOrder: string[];
   settings: PersonalSettings;
   onSaved: (settings: PersonalSettings) => void;
   isSignedIn: boolean;
@@ -25,6 +26,7 @@ interface PersonalSettingsPageProps {
 export function PersonalSettingsPage({
   restaurants,
   categories,
+  areaOrder,
   settings,
   onSaved,
   isSignedIn,
@@ -64,7 +66,10 @@ export function PersonalSettingsPage({
     setSaveState('idle');
   };
 
-  const allAreas = useMemo(() => Array.from(new Set(restaurants.map(r => r.area))).sort(), [restaurants]);
+  const allAreas = useMemo(
+    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.area))), areaOrder),
+    [restaurants, areaOrder],
+  );
   const filterGroups = useMemo(() => buildFilterGroups(allAreas, categories), [allAreas, categories]);
   const people = useMemo(
     () => Array.from(new Set(restaurants.map(r => r.addedBy).filter(Boolean))).sort(),

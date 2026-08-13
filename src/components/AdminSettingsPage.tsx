@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Restaurant } from '../types/restaurant';
 import { AppSettings, saveAppSettings } from '../lib/appSettings';
-import { AreaCategory, CuisineCategory } from '../lib/categories';
+import { AreaCategory, CuisineCategory, sortByOrder } from '../lib/categories';
 import { UserManagement } from './UserManagement';
 
 interface AdminSettingsPageProps {
@@ -129,7 +129,32 @@ export function AdminSettingsPage({
   };
 
   // --- area categories (draft) ---
-  const allAreas = useMemo(() => Array.from(new Set(restaurants.map(r => r.area))).sort(), [restaurants]);
+  const allAreas = useMemo(
+    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.area))), draft.areaOrder),
+    [restaurants, draft.areaOrder],
+  );
+
+  const moveArea = (index: number, direction: -1 | 1) => {
+    if (!canManageCategories) return;
+    const target = index + direction;
+    if (target < 0 || target >= allAreas.length) return;
+    const next = [...allAreas];
+    [next[index], next[target]] = [next[target], next[index]];
+    setDraft(prev => ({ ...prev, areaOrder: next }));
+    setSaveState('idle');
+  };
+
+  const moveCategory = (index: number, direction: -1 | 1) => {
+    if (!canManageCategories) return;
+    setDraft(prev => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.categories.length) return prev;
+      const next = [...prev.categories];
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...prev, categories: next };
+    });
+    setSaveState('idle');
+  };
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryAreas, setNewCategoryAreas] = useState<string[]>([]);
 
@@ -181,7 +206,32 @@ export function AdminSettingsPage({
   };
 
   // --- cuisine categories (draft) ---
-  const allCuisines = useMemo(() => Array.from(new Set(restaurants.map(r => r.cuisine))).sort(), [restaurants]);
+  const allCuisines = useMemo(
+    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.cuisine))), draft.cuisineOrder),
+    [restaurants, draft.cuisineOrder],
+  );
+
+  const moveCuisine = (index: number, direction: -1 | 1) => {
+    if (!canManageCategories) return;
+    const target = index + direction;
+    if (target < 0 || target >= allCuisines.length) return;
+    const next = [...allCuisines];
+    [next[index], next[target]] = [next[target], next[index]];
+    setDraft(prev => ({ ...prev, cuisineOrder: next }));
+    setSaveState('idle');
+  };
+
+  const moveCuisineCategory = (index: number, direction: -1 | 1) => {
+    if (!canManageCategories) return;
+    setDraft(prev => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.cuisineCategories.length) return prev;
+      const next = [...prev.cuisineCategories];
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...prev, cuisineCategories: next };
+    });
+    setSaveState('idle');
+  };
   const [newCuisineCategoryName, setNewCuisineCategoryName] = useState('');
   const [newCuisineCategoryCuisines, setNewCuisineCategoryCuisines] = useState<string[]>([]);
 
@@ -247,7 +297,12 @@ export function AdminSettingsPage({
       return;
     }
 
-    const nextDraft = { categories: trimmedCategories, cuisineCategories: trimmedCuisineCategories };
+    const nextDraft: AppSettings = {
+      categories: trimmedCategories,
+      cuisineCategories: trimmedCuisineCategories,
+      areaOrder: draft.areaOrder,
+      cuisineOrder: draft.cuisineOrder,
+    };
     setSaveState('saving');
     setSaveError('');
     try {
@@ -327,6 +382,26 @@ export function AdminSettingsPage({
               {draft.categories.map((cat, index) => (
                 <li key={index} className="bg-gray-50 rounded-md px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
+                    {canManageCategories && (
+                      <div className="flex flex-col shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => moveCategory(index, -1)}
+                          disabled={index === 0}
+                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveCategory(index, 1)}
+                          disabled={index === draft.categories.length - 1}
+                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    )}
                     {canManageCategories ? (
                       <input
                         type="text"
@@ -443,6 +518,26 @@ export function AdminSettingsPage({
               {draft.cuisineCategories.map((cat, index) => (
                 <li key={index} className="bg-gray-50 rounded-md px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
+                    {canManageCategories && (
+                      <div className="flex flex-col shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => moveCuisineCategory(index, -1)}
+                          disabled={index === 0}
+                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveCuisineCategory(index, 1)}
+                          disabled={index === draft.cuisineCategories.length - 1}
+                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    )}
                     {canManageCategories ? (
                       <input
                         type="text"
@@ -553,6 +648,7 @@ export function AdminSettingsPage({
             <h2 className="text-lg font-bold mb-2">エリア名・料理種別名を変更</h2>
             <p className="text-sm text-gray-600 mb-4">
               名前を変更すると、その名前を使っているすべての店舗に反映されます。
+              {canManageCategories && '並び順(▲▼)の変更は「設定をすべて保存」で反映されます。'}
             </p>
 
             {renameMessage && (
@@ -563,9 +659,29 @@ export function AdminSettingsPage({
               <div>
                 <h3 className="text-sm font-medium mb-2">エリア名</h3>
                 <ul className="space-y-2">
-                  {allAreas.map(area => (
+                  {allAreas.map((area, index) => (
                     <li key={area} className="p-2 bg-gray-50 rounded-md space-y-1.5">
                       <div className="flex gap-2">
+                        {canManageCategories && (
+                          <div className="flex flex-col shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => moveArea(index, -1)}
+                              disabled={index === 0}
+                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveArea(index, 1)}
+                              disabled={index === allAreas.length - 1}
+                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        )}
                         <input
                           type="text"
                           value={areaRenameDrafts[area] ?? area}
@@ -615,9 +731,29 @@ export function AdminSettingsPage({
               <div>
                 <h3 className="text-sm font-medium mb-2">料理種別名</h3>
                 <ul className="space-y-2">
-                  {allCuisines.map(cuisine => (
+                  {allCuisines.map((cuisine, index) => (
                     <li key={cuisine} className="p-2 bg-gray-50 rounded-md space-y-1.5">
                       <div className="flex gap-2">
+                        {canManageCategories && (
+                          <div className="flex flex-col shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => moveCuisine(index, -1)}
+                              disabled={index === 0}
+                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveCuisine(index, 1)}
+                              disabled={index === allCuisines.length - 1}
+                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        )}
                         <input
                           type="text"
                           value={cuisineRenameDrafts[cuisine] ?? cuisine}

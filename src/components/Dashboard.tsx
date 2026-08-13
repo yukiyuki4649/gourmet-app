@@ -9,6 +9,7 @@ import {
   buildCuisineFilterGroups,
   resolveFilterAreas,
   resolveFilterCuisines,
+  sortByOrder,
 } from '../lib/categories';
 import { applyRestaurantFilters } from '../lib/filters';
 
@@ -20,6 +21,8 @@ interface DashboardProps {
   selectedId?: string | null;
   categories: AreaCategory[];
   cuisineCategories: CuisineCategory[];
+  areaOrder: string[];
+  cuisineOrder: string[];
   areaFilter: string;
   onAreaFilterChange: (value: string) => void;
   cuisineFilter: string;
@@ -39,6 +42,8 @@ export function Dashboard({
   selectedId,
   categories,
   cuisineCategories,
+  areaOrder,
+  cuisineOrder,
   areaFilter,
   onAreaFilterChange,
   cuisineFilter,
@@ -63,14 +68,14 @@ export function Dashboard({
   };
 
   const areas = useMemo(() => {
-    const unique = new Set(restaurants.map(r => r.area));
-    return Array.from(unique).sort();
-  }, [restaurants]);
+    const unique = Array.from(new Set(restaurants.map(r => r.area)));
+    return sortByOrder(unique, areaOrder);
+  }, [restaurants, areaOrder]);
 
   const cuisines = useMemo(() => {
-    const unique = new Set(restaurants.map(r => r.cuisine));
-    return Array.from(unique).sort();
-  }, [restaurants]);
+    const unique = Array.from(new Set(restaurants.map(r => r.cuisine)));
+    return sortByOrder(unique, cuisineOrder);
+  }, [restaurants, cuisineOrder]);
 
   const filterGroups = useMemo(() => buildFilterGroups(areas, categories), [areas, categories]);
   const cuisineFilterGroups = useMemo(

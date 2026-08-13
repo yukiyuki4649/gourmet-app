@@ -11,11 +11,17 @@ export interface MapCenter {
 export interface AppSettings {
   categories: AreaCategory[];
   cuisineCategories: CuisineCategory[];
+  // Manually chosen display order for area/cuisine names (see sortByOrder in categories.ts).
+  // Names not yet present here fall back to alphabetical, appended after the ranked ones.
+  areaOrder: string[];
+  cuisineOrder: string[];
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   categories: [],
   cuisineCategories: [],
+  areaOrder: [],
+  cuisineOrder: [],
 };
 
 function settingsDocRef() {
@@ -29,6 +35,8 @@ export async function loadAppSettings(): Promise<AppSettings> {
   return {
     categories: Array.isArray(data.categories) ? data.categories : [],
     cuisineCategories: Array.isArray(data.cuisineCategories) ? data.cuisineCategories : [],
+    areaOrder: Array.isArray(data.areaOrder) ? data.areaOrder : [],
+    cuisineOrder: Array.isArray(data.cuisineOrder) ? data.cuisineOrder : [],
   };
 }
 
