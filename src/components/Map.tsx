@@ -1,5 +1,5 @@
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Restaurant } from '../types/restaurant';
 
 const containerStyle = {
@@ -18,10 +18,13 @@ export function Map({ restaurants }: MapProps) {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   });
 
-  const center =
-    restaurants.length > 0
-      ? { lat: restaurants[0].latitude, lng: restaurants[0].longitude }
-      : { lat: 35.6762, lng: 139.6503 };
+  const center = useMemo(
+    () =>
+      restaurants.length > 0
+        ? { lat: restaurants[0].latitude, lng: restaurants[0].longitude }
+        : { lat: 35.6762, lng: 139.6503 },
+    [restaurants],
+  );
 
   if (!isLoaded) return <div>読み込み中...</div>;
 
