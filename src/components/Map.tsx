@@ -6,7 +6,7 @@ import { GOOGLE_MAPS_LIBRARIES } from '../lib/googleMapsLibraries';
 
 const containerStyle = {
   width: '100%',
-  height: '500px',
+  height: '100%',
 };
 
 interface MapProps {
@@ -49,50 +49,52 @@ export function Map({ restaurants, selectedId, onSelectRestaurant, isFiltered, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurants, isFiltered]);
 
-  if (!isLoaded) return <div>読み込み中...</div>;
+  if (!isLoaded) return <div className="h-64 sm:h-[500px]">読み込み中...</div>;
 
   return (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      center={center}
-      zoom={12}
-      onLoad={map => {
-        mapRef.current = map;
-      }}
-      onUnmount={() => {
-        mapRef.current = null;
-      }}
-    >
-      {restaurants.map(restaurant => (
-        <Marker
-          key={restaurant.id}
-          position={{
-            lat: restaurant.latitude,
-            lng: restaurant.longitude,
-          }}
-          onClick={() => {
-            setSelectedMarker(restaurant);
-            onSelectRestaurant?.(restaurant.id);
-          }}
-        />
-      ))}
+    <div className="h-64 sm:h-[500px]">
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={12}
+        onLoad={map => {
+          mapRef.current = map;
+        }}
+        onUnmount={() => {
+          mapRef.current = null;
+        }}
+      >
+        {restaurants.map(restaurant => (
+          <Marker
+            key={restaurant.id}
+            position={{
+              lat: restaurant.latitude,
+              lng: restaurant.longitude,
+            }}
+            onClick={() => {
+              setSelectedMarker(restaurant);
+              onSelectRestaurant?.(restaurant.id);
+            }}
+          />
+        ))}
 
-      {selectedMarker && (
-        <InfoWindow
-          position={{
-            lat: selectedMarker.latitude,
-            lng: selectedMarker.longitude,
-          }}
-          onCloseClick={() => setSelectedMarker(null)}
-        >
-          <div className="p-2">
-            <h3 className="font-bold">{selectedMarker.name}</h3>
-            <p className="text-sm text-gray-600">{selectedMarker.cuisine}</p>
-            <p className="text-sm text-gray-600">総合評価: {selectedMarker.overallRating}</p>
-            {selectedMarker.notes && <p className="text-sm mt-1">{selectedMarker.notes}</p>}
-          </div>
-        </InfoWindow>
-      )}
-    </GoogleMap>
+        {selectedMarker && (
+          <InfoWindow
+            position={{
+              lat: selectedMarker.latitude,
+              lng: selectedMarker.longitude,
+            }}
+            onCloseClick={() => setSelectedMarker(null)}
+          >
+            <div className="p-2">
+              <h3 className="font-bold">{selectedMarker.name}</h3>
+              <p className="text-sm text-gray-600">{selectedMarker.cuisine}</p>
+              <p className="text-sm text-gray-600">総合評価: {selectedMarker.overallRating}</p>
+              {selectedMarker.notes && <p className="text-sm mt-1">{selectedMarker.notes}</p>}
+            </div>
+          </InfoWindow>
+        )}
+      </GoogleMap>
+    </div>
   );
 }
