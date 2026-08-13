@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { PhotoInfo } from '../types/restaurant';
-import { searchStockPhoto } from '../lib/unsplash';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 
 interface PhotoFieldProps {
   label: string;
   photo: PhotoInfo | null;
-  searchQuery: string;
   onChange: (photo: PhotoInfo | null) => void;
 }
 
-export function PhotoField({ label, photo, searchQuery, onChange }: PhotoFieldProps) {
-  const [loading, setLoading] = useState(false);
+export function PhotoField({ label, photo, onChange }: PhotoFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -24,18 +21,6 @@ export function PhotoField({ label, photo, searchQuery, onChange }: PhotoFieldPr
   useEffect(() => {
     setImgFailed(false);
   }, [photo?.url]);
-
-  const handleReroll = async () => {
-    setLoading(true);
-    setError('');
-    const next = await searchStockPhoto(searchQuery).catch(() => null);
-    setLoading(false);
-    if (next) {
-      onChange(next);
-    } else {
-      setError('自動検索で写真が見つかりませんでした。「端末から選ぶ」か「画像URLを指定」から設定できます');
-    }
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,14 +101,6 @@ export function PhotoField({ label, photo, searchQuery, onChange }: PhotoFieldPr
           onChange={handleFileChange}
           className="hidden"
         />
-        <button
-          type="button"
-          onClick={handleReroll}
-          disabled={loading}
-          className="px-3 py-1 text-sm bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
-        >
-          {loading ? '検索中...' : '自動で探す'}
-        </button>
         <button
           type="button"
           onClick={() => setShowUrlInput(v => !v)}

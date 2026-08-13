@@ -182,13 +182,11 @@ export function EditRestaurantModal({
             <PhotoField
               label="外観の写真"
               photo={formData.exteriorPhoto}
-              searchQuery={`${formData.cuisine} restaurant storefront`}
               onChange={photo => setFormData(prev => ({ ...prev, exteriorPhoto: photo }))}
             />
             <PhotoField
               label="料理の写真"
               photo={formData.dishPhoto}
-              searchQuery={`${formData.cuisine} food dish`}
               onChange={photo => setFormData(prev => ({ ...prev, dishPhoto: photo }))}
             />
           </div>
