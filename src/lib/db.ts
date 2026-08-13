@@ -2,7 +2,6 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -32,8 +31,12 @@ function toMillis(value: unknown): number {
  * query can't be checked that way and is rejected outright. So instead of one query
  * over the whole collection, we run one targeted query per visibility case the
  * current viewer is allowed to see, then merge and re-sort the results client-side.
+ *
+ * `deleted` is deliberately NOT part of any query here — it isn't referenced by the
+ * security rules, so filtering on it client-side (in getAllRestaurants/
+ * getDeletedRestaurants below) avoids ever needing a new composite index.
  */
-export async function getAllRestaurants(currentUid: string | null, isAdmin: boolean): Promise<Restaurant[]> {
+async function fetchVisibleRestaurants(currentUid: string | null, isAdmin: boolean): Promise<Restaurant[]> {
   const restaurantsRef = collection(db, COLLECTION_NAME);
   const queries = [query(restaurantsRef, where('visibility', '==', 'public'))];
 
@@ -67,7 +70,18 @@ export async function getAllRestaurants(currentUid: string | null, isAdmin: bool
     }
   }
 
-  return Array.from(merged.values()).sort((a, b) => toMillis(a.geocodedAt) - toMillis(b.geocodedAt));
+  return Array.from(merged.values());
+}
+
+export async function getAllRestaurants(currentUid: string | null, isAdmin: boolean): Promise<Restaurant[]> {
+  const all = await fetchVisibleRestaurants(currentUid, isAdmin);
+  return all.filter(r => !r.deleted).sort((a, b) => toMillis(a.geocodedAt) - toMillis(b.geocodedAt));
+}
+
+/** Restaurants the current viewer has soft-deleted access to see — used by the admin-only "非表示にした店舗" panel. */
+export async function getDeletedRestaurants(currentUid: string | null, isAdmin: boolean): Promise<Restaurant[]> {
+  const all = await fetchVisibleRestaurants(currentUid, isAdmin);
+  return all.filter(r => r.deleted).sort((a, b) => toMillis(a.geocodedAt) - toMillis(b.geocodedAt));
 }
 
 export async function addRestaurant(data: RestaurantInput & { latitude: number; longitude: number }): Promise<string> {
@@ -110,8 +124,16 @@ export async function getRestaurantHistory(id: string): Promise<RestaurantHistor
   return snap.docs.map(d => ({ id: d.id, ...d.data() }) as RestaurantHistoryEntry);
 }
 
+/**
+ * Soft delete — marks the restaurant hidden instead of removing the document, so an
+ * admin can review and restore it later (see restoreRestaurant / getDeletedRestaurants).
+ */
 export async function deleteRestaurant(id: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTION_NAME, id));
+  await updateDoc(doc(db, COLLECTION_NAME, id), { deleted: true });
+}
+
+export async function restoreRestaurant(id: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTION_NAME, id), { deleted: false });
 }
 
 export async function bulkImportRestaurants(

@@ -15,6 +15,8 @@ interface AdminSettingsPageProps {
   currentUid: string | null;
   onRenameArea: (oldName: string, newName: string) => Promise<void>;
   onRenameCuisine: (oldName: string, newName: string) => Promise<void>;
+  deletedRestaurants: Restaurant[];
+  onRestoreRestaurant: (id: string) => Promise<void>;
 }
 
 export function AdminSettingsPage({
@@ -28,6 +30,8 @@ export function AdminSettingsPage({
   currentUid,
   onRenameArea,
   onRenameCuisine,
+  deletedRestaurants,
+  onRestoreRestaurant,
 }: AdminSettingsPageProps) {
   // Everything below is a local draft — nothing is persisted until "設定をすべて保存" is clicked.
   const [draft, setDraft] = useState<AppSettings>(settings);
@@ -754,6 +758,38 @@ export function AdminSettingsPage({
                 </ul>
               </div>
             </div>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-bold mb-2">非表示にした店舗</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              削除された店舗はここに表示され、管理者だけが見えます。「復元」で一覧に戻せます。
+            </p>
+            {deletedRestaurants.length === 0 ? (
+              <p className="text-sm text-gray-400">非表示の店舗はありません</p>
+            ) : (
+              <ul className="space-y-2">
+                {deletedRestaurants.map(r => (
+                  <li key={r.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-md px-3 py-2">
+                    <div className="text-sm">
+                      <span className="font-medium">{r.name}</span>
+                      <span className="text-gray-500 ml-2">
+                        {r.area} / {r.cuisine} / 追加者: {r.addedBy || '不明'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onRestoreRestaurant(r.id)}
+                      className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 whitespace-nowrap"
+                    >
+                      復元
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 

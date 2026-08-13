@@ -11,8 +11,10 @@ import { SiteQRCode } from './components/SiteQRCode';
 import { Restaurant, RestaurantInput } from './types/restaurant';
 import {
   getAllRestaurants,
+  getDeletedRestaurants,
   addRestaurant,
   deleteRestaurant,
+  restoreRestaurant,
   updateRestaurant,
   bulkUpdateRestaurants,
 } from './lib/db';
@@ -108,6 +110,25 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit]);
 
+  // Soft-deleted restaurants, visible only to admins so they can review/restore them.
+  const [deletedRestaurants, setDeletedRestaurants] = useState<Restaurant[]>([]);
+  const reloadDeletedRestaurants = async () => {
+    if (!isAdmin) {
+      setDeletedRestaurants([]);
+      return;
+    }
+    try {
+      const data = await getDeletedRestaurants(authUser?.uid ?? null, isAdmin);
+      setDeletedRestaurants(data);
+    } catch (error) {
+      console.error('Failed to load deleted restaurants:', error);
+    }
+  };
+  useEffect(() => {
+    reloadDeletedRestaurants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, authUser?.uid]);
+
   const firstRestaurantsLoad = useRef(true);
 
   // Re-runs whenever the signed-in user (or their role) changes, since which
@@ -190,14 +211,26 @@ export default function App() {
   };
 
   const handleDeleteRestaurant = async (id: string) => {
-    if (!window.confirm('この飲食店を削除しますか？')) return;
+    if (!window.confirm('この飲食店を削除しますか?(非表示になるだけで、管理者は後から復元できます)')) return;
 
     try {
       await deleteRestaurant(id);
       await reloadRestaurants();
+      await reloadDeletedRestaurants();
     } catch (error) {
       console.error('Failed to delete restaurant:', error);
       alert('飲食店の削除に失敗しました');
+    }
+  };
+
+  const handleRestoreRestaurant = async (id: string) => {
+    try {
+      await restoreRestaurant(id);
+      await reloadRestaurants();
+      await reloadDeletedRestaurants();
+    } catch (error) {
+      console.error('Failed to restore restaurant:', error);
+      alert('復元に失敗しました');
     }
   };
 
@@ -318,6 +351,8 @@ export default function App() {
         currentUid={authUser?.uid ?? null}
         onRenameArea={handleRenameArea}
         onRenameCuisine={handleRenameCuisine}
+        deletedRestaurants={deletedRestaurants}
+        onRestoreRestaurant={handleRestoreRestaurant}
       />
     );
   }

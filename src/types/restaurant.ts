@@ -28,6 +28,7 @@ export interface Restaurant {
   customLink?: string;
   recommendedIds?: string[];
   isLunch?: boolean;
+  deleted?: boolean;
 }
 
 export interface RestaurantHistoryEntry {
