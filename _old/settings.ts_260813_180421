@@ -1,0 +1,66 @@
+const DEFAULT_CENTER_KEY = 'gourmet-map:defaultCenter';
+
+export interface MapCenter {
+  lat: number;
+  lng: number;
+}
+
+export function getDefaultCenter(): MapCenter | null {
+  try {
+    const raw = localStorage.getItem(DEFAULT_CENTER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setDefaultCenter(center: MapCenter): void {
+  localStorage.setItem(DEFAULT_CENTER_KEY, JSON.stringify(center));
+}
+
+export function clearDefaultCenter(): void {
+  localStorage.removeItem(DEFAULT_CENTER_KEY);
+}
+
+const DEFAULT_AREA_FILTER_KEY = 'gourmet-map:defaultAreaFilter';
+
+export function getDefaultAreaFilter(): string {
+  return localStorage.getItem(DEFAULT_AREA_FILTER_KEY) ?? '';
+}
+
+export function setDefaultAreaFilter(value: string): void {
+  if (value) {
+    localStorage.setItem(DEFAULT_AREA_FILTER_KEY, value);
+  } else {
+    localStorage.removeItem(DEFAULT_AREA_FILTER_KEY);
+  }
+}
+
+const SHOW_ADDED_BY_KEY = 'gourmet-map:showAddedBy';
+
+export function getShowAddedBy(): boolean {
+  return localStorage.getItem(SHOW_ADDED_BY_KEY) !== 'false';
+}
+
+export function setShowAddedBy(value: boolean): void {
+  localStorage.setItem(SHOW_ADDED_BY_KEY, String(value));
+}
+
+const DEFAULT_PERSON_FILTER_KEY = 'gourmet-map:defaultPersonFilter';
+
+export function getDefaultPersonFilter(): string {
+  return localStorage.getItem(DEFAULT_PERSON_FILTER_KEY) ?? '';
+}
+
+export function setDefaultPersonFilter(value: string): void {
+  if (value) {
+    localStorage.setItem(DEFAULT_PERSON_FILTER_KEY, value);
+  } else {
+    localStorage.removeItem(DEFAULT_PERSON_FILTER_KEY);
+  }
+}

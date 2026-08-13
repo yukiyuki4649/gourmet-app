@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function canEdit() {
+      return isSignedIn() && userRole() in ['admin', 'approved'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    function canManageCategories() {
+      return isAdmin()
+        || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.manageCategories == true);
+    }
+
+    // Public restaurants are visible to anyone, including signed-out visitors.
+    // Private restaurants are only visible to the person who added them, anyone
+    // on the restaurant's own visibleToUids share list, or an admin.
+    // Only admins and accounts approved by an admin can add/edit/delete.
+    //
+    // Every clause here is written so a matching client-side query (see
+    // getAllRestaurants in db.ts) provably satisfies it — Firestore rejects
+    // "list" queries outright if it can't verify that from the query's own
+    // where-clauses, so an unconstrained allow-read here would break listing.
+    match /restaurants/{restaurantId} {
+      allow read: if resource.data.visibility == 'public'
+        || (isSignedIn() && resource.data.visibility == 'private' && (
+             resource.data.addedByUid == request.auth.uid ||
+             request.auth.uid in resource.data.visibleToUids ||
+             isAdmin()
+           ));
+      allow create, update, delete: if canEdit();
+
+      // Snapshot recorded automatically before every edit, so past versions can
+      // be reviewed and reverted to. Never edited/deleted directly by clients.
+      match /history/{historyId} {
+        allow read, create: if canEdit();
+        allow update, delete: if false;
+      }
+    }
+
+    // Shared app settings (area/cuisine categories only — per-user display
+    // settings like default map center/filters live in browser localStorage,
+    // not here, so they work without signing in).
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if canManageCategories();
+    }
+
+    // User profiles / roles. A new signup may only create its own doc with role
+    // "pending" — nobody can self-promote to admin/approved. Only an admin can
+    // change someone's role afterwards.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'pending';
+      allow update, delete: if isAdmin();
+    }
+  }
+}

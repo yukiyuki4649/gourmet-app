@@ -1,3 +1,11 @@
+export type Visibility = 'public' | 'private';
+
+export interface PhotoInfo {
+  url: string;
+  creditName: string;
+  creditUrl: string;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -11,6 +19,21 @@ export interface Restaurant {
   longitude: number;
   geocoded: boolean;
   geocodedAt?: Date;
+  addedBy: string;
+  addedByUid?: string;
+  visibility: Visibility;
+  visibleToUids: string[];
+  exteriorPhoto?: PhotoInfo | null;
+  dishPhoto?: PhotoInfo | null;
+  customLink?: string;
+  recommendedIds?: string[];
+}
+
+export interface RestaurantHistoryEntry {
+  id: string;
+  snapshot: Partial<Restaurant>;
+  editedBy: string;
+  editedAt: unknown;
 }
 
 export interface RestaurantInput {
@@ -21,4 +44,12 @@ export interface RestaurantInput {
   tasteRating: string;
   valuRating: string;
   notes: string;
+  addedBy: string;
+  addedByUid: string;
+  visibility: Visibility;
+  visibleToUids: string[];
+  exteriorPhoto?: PhotoInfo | null;
+  dishPhoto?: PhotoInfo | null;
+  customLink?: string;
+  recommendedIds?: string[];
 }

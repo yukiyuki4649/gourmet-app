@@ -1,31 +1,173 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { User } from 'firebase/auth';
 import { Map } from './components/Map';
 import { Dashboard } from './components/Dashboard';
 import { AddRestaurantForm } from './components/AddRestaurantForm';
+import { EditRestaurantModal } from './components/EditRestaurantModal';
+import { PersonalSettingsPage } from './components/PersonalSettingsPage';
+import { AdminSettingsPage } from './components/AdminSettingsPage';
+import { AuthPanel } from './components/AuthPanel';
 import { Restaurant, RestaurantInput } from './types/restaurant';
-import { getAllRestaurants, addRestaurant, deleteRestaurant, updateRestaurant } from './lib/db';
+import {
+  getAllRestaurants,
+  addRestaurant,
+  deleteRestaurant,
+  updateRestaurant,
+  bulkUpdateRestaurants,
+  renameArea,
+  renameCuisine,
+} from './lib/db';
+import { resolveFilterAreas, resolveFilterCuisines } from './lib/categories';
+import { applyRestaurantFilters } from './lib/filters';
+import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from './lib/appSettings';
+import { PersonalSettings, loadPersonalSettings, savePersonalSettings } from './lib/personalSettings';
+import { onAuthChange, getUserProfile, listAllUsers, UserProfile } from './lib/auth';
+import { auth } from './lib/firebase';
 import './index.css';
 
+function getRouteFromHash(): 'home' | 'settings' | 'admin' {
+  if (window.location.hash === '#/admin') return 'admin';
+  if (window.location.hash === '#/settings') return 'settings';
+  return 'home';
+}
+
 export default function App() {
+  const [route, setRoute] = useState(getRouteFromHash);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cuisineFilter, setCuisineFilter] = useState('');
+
+  // Per-browser settings, no login required — loaded synchronously from localStorage.
+  const [personalSettings, setPersonalSettings] = useState<PersonalSettings>(() => loadPersonalSettings());
+  const [areaFilter, setAreaFilter] = useState(() => loadPersonalSettings().defaultAreaFilter);
+
+  // Shared, admin-managed settings (area/cuisine categories) — loaded from Firestore.
+  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [sharedSettingsLoading, setSharedSettingsLoading] = useState(true);
+  const firstSharedSettingsLoad = useRef(true);
+
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    loadRestaurants();
+    const unsubscribe = onAuthChange(async user => {
+      setAuthUser(user);
+      if (user) {
+        const p = await getUserProfile(user.uid);
+        setProfile(p);
+      } else {
+        setProfile(null);
+      }
+      setAuthLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
-  const loadRestaurants = async () => {
+  const refreshProfile = async () => {
+    // Read auth.currentUser directly (not the authUser state) since this can be called
+    // from a stale closure right after signup, before a re-render lands the fresh state.
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      const p = await getUserProfile(uid);
+      setProfile(p);
+    }
+  };
+
+  useEffect(() => {
+    const onHashChange = () => setRoute(getRouteFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Loads shared (category) settings on first mount, and again every time the user returns
+  // to the home route (so edits made on the admin settings page take effect without a reload).
+  useEffect(() => {
+    if (route !== 'home') return;
+    (async () => {
+      const s = await loadAppSettings();
+      setAppSettings(s);
+      firstSharedSettingsLoad.current = false;
+      setSharedSettingsLoading(false);
+    })();
+  }, [route]);
+
+  const canEdit = profile?.role === 'admin' || profile?.role === 'approved';
+  const isAdmin = profile?.role === 'admin';
+  const canManageCategories = isAdmin || profile?.permissions?.manageCategories === true;
+
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  useEffect(() => {
+    if (canEdit) {
+      listAllUsers().then(setAllUsers).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit]);
+
+  const firstRestaurantsLoad = useRef(true);
+
+  // Re-runs whenever the signed-in user (or their role) changes, since which
+  // restaurants are visible depends on both — see getAllRestaurants in db.ts.
+  useEffect(() => {
+    if (authLoading) return;
+    (async () => {
+      if (firstRestaurantsLoad.current) {
+        setRestaurantsLoading(true);
+      }
+      try {
+        const data = await getAllRestaurants(authUser?.uid ?? null, isAdmin);
+        setRestaurants(data);
+      } catch (error) {
+        console.error('Failed to load restaurants:', error);
+        alert('飲食店データの読み込みに失敗しました');
+      } finally {
+        setRestaurantsLoading(false);
+        firstRestaurantsLoad.current = false;
+      }
+    })();
+  }, [authUser?.uid, isAdmin, authLoading]);
+
+  const effectiveAreas = useMemo(
+    () => resolveFilterAreas(areaFilter, appSettings.categories),
+    [areaFilter, appSettings.categories],
+  );
+  const effectiveCuisines = useMemo(
+    () => resolveFilterCuisines(cuisineFilter, appSettings.cuisineCategories),
+    [cuisineFilter, appSettings.cuisineCategories],
+  );
+
+  const mapRestaurants = useMemo(
+    () =>
+      applyRestaurantFilters(restaurants, {
+        effectiveAreas,
+        effectiveCuisines,
+        person: personalSettings.defaultPersonFilter,
+      }),
+    [restaurants, effectiveAreas, effectiveCuisines, personalSettings.defaultPersonFilter],
+  );
+
+  const isFiltered = effectiveAreas !== null || effectiveCuisines !== null || personalSettings.defaultPersonFilter !== '';
+
+  const cuisineOptions = useMemo(
+    () => Array.from(new Set(restaurants.map(r => r.cuisine))).sort(),
+    [restaurants],
+  );
+  const areaOptions = useMemo(
+    () => Array.from(new Set(restaurants.map(r => r.area))).sort(),
+    [restaurants],
+  );
+
+  const reloadRestaurants = async () => {
     try {
-      setLoading(true);
-      const data = await getAllRestaurants();
+      const data = await getAllRestaurants(authUser?.uid ?? null, isAdmin);
       setRestaurants(data);
     } catch (error) {
       console.error('Failed to load restaurants:', error);
       alert('飲食店データの読み込みに失敗しました');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -33,7 +175,7 @@ export default function App() {
     try {
       setIsAdding(true);
       await addRestaurant(data);
-      await loadRestaurants();
+      await reloadRestaurants();
     } catch (error) {
       console.error('Failed to add restaurant:', error);
       alert('飲食店の追加に失敗しました');
@@ -47,7 +189,7 @@ export default function App() {
 
     try {
       await deleteRestaurant(id);
-      await loadRestaurants();
+      await reloadRestaurants();
     } catch (error) {
       console.error('Failed to delete restaurant:', error);
       alert('飲食店の削除に失敗しました');
@@ -58,7 +200,71 @@ export default function App() {
     setEditingId(restaurant.id);
   };
 
-  if (loading) {
+  const handleUpdateRestaurant = async (id: string, data: Partial<Restaurant>) => {
+    try {
+      setIsUpdating(true);
+      await updateRestaurant(id, data, profile?.displayName ?? '不明');
+      await reloadRestaurants();
+      setEditingId(null);
+    } catch (error) {
+      console.error('Failed to update restaurant:', error);
+      alert('飲食店の更新に失敗しました');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleBulkUpdate = async (ids: string[], patch: Partial<Restaurant>) => {
+    try {
+      await bulkUpdateRestaurants(ids, patch);
+      await reloadRestaurants();
+    } catch (error) {
+      console.error('Failed to bulk update restaurants:', error);
+      alert('一括編集に失敗しました');
+    }
+  };
+
+  // Renaming an area/cuisine touches restaurant docs directly (allowed to any canEdit
+  // user), then best-effort patches the shared category groupings that reference the
+  // old name — that second step needs canManageCategories, so it's silently skipped
+  // for users who only have canEdit (the area rename itself still succeeds for them).
+  const handleRenameArea = async (oldName: string, newName: string) => {
+    await renameArea(oldName, newName);
+    if (canManageCategories) {
+      const nextCategories = appSettings.categories.map(c => ({
+        ...c,
+        areas: c.areas.map(a => (a === oldName ? newName : a)),
+      }));
+      const nextSettings = { ...appSettings, categories: nextCategories };
+      await saveAppSettings(nextSettings);
+      setAppSettings(nextSettings);
+    }
+    await reloadRestaurants();
+  };
+
+  const handleRenameCuisine = async (oldName: string, newName: string) => {
+    await renameCuisine(oldName, newName);
+    if (canManageCategories) {
+      const nextCuisineCategories = appSettings.cuisineCategories.map(c => ({
+        ...c,
+        cuisines: c.cuisines.map(cu => (cu === oldName ? newName : cu)),
+      }));
+      const nextSettings = { ...appSettings, cuisineCategories: nextCuisineCategories };
+      await saveAppSettings(nextSettings);
+      setAppSettings(nextSettings);
+    }
+    await reloadRestaurants();
+  };
+
+  const handleClearPersonFilter = () => {
+    const next = { ...personalSettings, defaultPersonFilter: '' };
+    savePersonalSettings(next);
+    setPersonalSettings(next);
+  };
+
+  const editingRestaurant = restaurants.find(r => r.id === editingId) ?? null;
+
+  if (restaurantsLoading || sharedSettingsLoading || authLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <p className="text-xl">読み込み中...</p>
@@ -66,60 +272,148 @@ export default function App() {
     );
   }
 
+  if (route === 'settings') {
+    return (
+      <PersonalSettingsPage
+        restaurants={restaurants}
+        categories={appSettings.categories}
+        settings={personalSettings}
+        onSaved={setPersonalSettings}
+      />
+    );
+  }
+
+  if (route === 'admin') {
+    return (
+      <AdminSettingsPage
+        restaurants={restaurants}
+        settings={appSettings}
+        onSaved={setAppSettings}
+        canManageCategories={canManageCategories}
+        canEdit={canEdit}
+        isAdmin={isAdmin}
+        isSignedIn={!!authUser}
+        currentUid={authUser?.uid ?? null}
+        onRenameArea={handleRenameArea}
+        onRenameCuisine={handleRenameCuisine}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">🍽️ グルメマップ</h1>
-          <p className="text-gray-600 mt-2">飲食店の評価と位置情報を管理</p>
+        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">🍽️ グルメマップ</h1>
+            <p className="text-gray-600 mt-2">飲食店の評価と位置情報を管理</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <AuthPanel user={authUser} profile={profile} onProfileChange={refreshProfile} />
+            <a href="#/settings" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap">
+              ⚙️ 設定
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold mb-4">地図</h2>
-            <Map restaurants={restaurants} />
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold mb-4">統計</h2>
-            <div className="bg-white rounded-lg shadow p-4 space-y-3">
-              <div className="border-b pb-3">
-                <p className="text-gray-600">総店舗数</p>
-                <p className="text-3xl font-bold">{restaurants.length}</p>
-              </div>
-
-              <div className="border-b pb-3">
-                <p className="text-gray-600">A評価</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {restaurants.filter(r => r.overallRating === 'A').length}
-                </p>
-              </div>
-
-              <div className="border-b pb-3">
-                <p className="text-gray-600">エリア数</p>
-                <p className="text-2xl font-bold">
-                  {new Set(restaurants.map(r => r.area)).size}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-600">料理種別</p>
-                <p className="text-2xl font-bold">
-                  {new Set(restaurants.map(r => r.cuisine)).size}
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">地図</h2>
+          <Map
+            restaurants={mapRestaurants}
+            selectedId={selectedId}
+            onSelectRestaurant={setSelectedId}
+            isFiltered={isFiltered}
+            defaultCenter={personalSettings.defaultCenter}
+          />
         </div>
 
         <div className="mb-8">
-          <AddRestaurantForm onSubmit={handleAddRestaurant} loading={isAdding} />
+          <Dashboard
+            restaurants={restaurants}
+            onEdit={handleEditRestaurant}
+            onDelete={handleDeleteRestaurant}
+            onSelectRestaurant={setSelectedId}
+            selectedId={selectedId}
+            categories={appSettings.categories}
+            cuisineCategories={appSettings.cuisineCategories}
+            areaFilter={areaFilter}
+            onAreaFilterChange={setAreaFilter}
+            cuisineFilter={cuisineFilter}
+            onCuisineFilterChange={setCuisineFilter}
+            personFilter={personalSettings.defaultPersonFilter}
+            onClearPersonFilter={handleClearPersonFilter}
+            showAddedBy={personalSettings.showAddedBy}
+            canEdit={canEdit}
+            onBulkUpdate={handleBulkUpdate}
+          />
         </div>
 
-        <Dashboard restaurants={restaurants} onEdit={handleEditRestaurant} onDelete={handleDeleteRestaurant} />
+        {canEdit ? (
+          <AddRestaurantForm
+            onSubmit={handleAddRestaurant}
+            loading={isAdding}
+            cuisineOptions={cuisineOptions}
+            areaOptions={areaOptions}
+            addedByName={profile?.displayName ?? ''}
+            addedByUid={authUser?.uid ?? ''}
+            defaultCenter={personalSettings.defaultCenter}
+            users={allUsers}
+            allRestaurants={restaurants}
+          />
+        ) : (
+          <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+            {authUser
+              ? '管理者の承認を受けると店舗を追加できるようになります'
+              : 'ログインすると店舗を追加できます'}
+          </div>
+        )}
+
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">統計</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-gray-600">総店舗数</p>
+              <p className="text-3xl font-bold">{restaurants.length}</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-gray-600">A評価</p>
+              <p className="text-3xl font-bold text-green-600">
+                {restaurants.filter(r => r.overallRating === 'A').length}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-gray-600">エリア数</p>
+              <p className="text-3xl font-bold">
+                {new Set(restaurants.map(r => r.area)).size}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-gray-600">料理種別</p>
+              <p className="text-3xl font-bold">
+                {new Set(restaurants.map(r => r.cuisine)).size}
+              </p>
+            </div>
+          </div>
+        </div>
       </main>
+
+      {editingRestaurant && canEdit && (
+        <EditRestaurantModal
+          restaurant={editingRestaurant}
+          onSave={handleUpdateRestaurant}
+          onClose={() => setEditingId(null)}
+          loading={isUpdating}
+          defaultCenter={personalSettings.defaultCenter}
+          users={allUsers}
+          currentUid={authUser?.uid ?? null}
+          allRestaurants={restaurants}
+        />
+      )}
     </div>
   );
 }

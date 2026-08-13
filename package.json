@@ -23,6 +23,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.16",
+    "firebase-admin": "^14.2.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.6",
     "tsx": "^4.7.0",

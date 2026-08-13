@@ -1,0 +1,502 @@
+import { useMemo, useRef, useState } from 'react';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { Restaurant } from '../types/restaurant';
+import { AppSettings, MapCenter, saveAppSettings } from '../lib/appSettings';
+import { AreaCategory, CuisineCategory, buildFilterGroups } from '../lib/categories';
+import { UserManagement } from './UserManagement';
+
+const containerStyle = {
+  width: '100%',
+  height: '500px',
+};
+
+const FALLBACK_CENTER: MapCenter = { lat: 35.6762, lng: 139.6503 };
+
+interface SettingsPageProps {
+  restaurants: Restaurant[];
+  settings: AppSettings;
+  onSaved: (settings: AppSettings) => void;
+  canEdit: boolean;
+  isAdmin: boolean;
+  currentUid: string | null;
+}
+
+export function SettingsPage({ restaurants, settings, onSaved, canEdit, isAdmin, currentUid }: SettingsPageProps) {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  });
+
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  // Everything below is a local draft — nothing is persisted until "設定をすべて保存" is clicked.
+  const [draft, setDraft] = useState<AppSettings>(settings);
+  const [picked, setPicked] = useState<MapCenter | null>(settings.defaultCenter);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveError, setSaveError] = useState('');
+
+  const initialMapCenter = useMemo(() => {
+    if (settings.defaultCenter) return settings.defaultCenter;
+    if (restaurants.length > 0) {
+      return { lat: restaurants[0].latitude, lng: restaurants[0].longitude };
+    }
+    return FALLBACK_CENTER;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePick = (point: MapCenter) => {
+    if (!canEdit) return;
+    setPicked(point);
+    setDraft(prev => ({ ...prev, defaultCenter: point }));
+    setSaveState('idle');
+    mapRef.current?.panTo(point);
+  };
+
+  const handleClearCenter = () => {
+    if (!canEdit) return;
+    setPicked(null);
+    setDraft(prev => ({ ...prev, defaultCenter: null }));
+    setSaveState('idle');
+  };
+
+  // --- area categories (draft) ---
+  const allAreas = useMemo(() => Array.from(new Set(restaurants.map(r => r.area))).sort(), [restaurants]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryAreas, setNewCategoryAreas] = useState<string[]>([]);
+
+  const toggleNewCategoryArea = (area: string) => {
+    setNewCategoryAreas(prev => (prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]));
+  };
+
+  const canAddCategory = canEdit && newCategoryName.trim() !== '' && newCategoryAreas.length > 0;
+
+  const handleAddCategory = () => {
+    if (!canAddCategory) return;
+    const name = newCategoryName.trim();
+    const nextCategories: AreaCategory[] = [
+      ...draft.categories.filter(c => c.name !== name),
+      { name, areas: newCategoryAreas },
+    ];
+    setDraft(prev => ({ ...prev, categories: nextCategories }));
+    setNewCategoryName('');
+    setNewCategoryAreas([]);
+    setSaveState('idle');
+  };
+
+  const handleDeleteCategory = (name: string) => {
+    if (!canEdit) return;
+    setDraft(prev => ({ ...prev, categories: prev.categories.filter(c => c.name !== name) }));
+    setSaveState('idle');
+  };
+
+  // --- cuisine categories (draft) ---
+  const allCuisines = useMemo(() => Array.from(new Set(restaurants.map(r => r.cuisine))).sort(), [restaurants]);
+  const [newCuisineCategoryName, setNewCuisineCategoryName] = useState('');
+  const [newCuisineCategoryCuisines, setNewCuisineCategoryCuisines] = useState<string[]>([]);
+
+  const toggleNewCuisineCategoryCuisine = (cuisine: string) => {
+    setNewCuisineCategoryCuisines(prev =>
+      prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine],
+    );
+  };
+
+  const canAddCuisineCategory = canEdit && newCuisineCategoryName.trim() !== '' && newCuisineCategoryCuisines.length > 0;
+
+  const handleAddCuisineCategory = () => {
+    if (!canAddCuisineCategory) return;
+    const name = newCuisineCategoryName.trim();
+    const nextCuisineCategories: CuisineCategory[] = [
+      ...draft.cuisineCategories.filter(c => c.name !== name),
+      { name, cuisines: newCuisineCategoryCuisines },
+    ];
+    setDraft(prev => ({ ...prev, cuisineCategories: nextCuisineCategories }));
+    setNewCuisineCategoryName('');
+    setNewCuisineCategoryCuisines([]);
+    setSaveState('idle');
+  };
+
+  const handleDeleteCuisineCategory = (name: string) => {
+    if (!canEdit) return;
+    setDraft(prev => ({ ...prev, cuisineCategories: prev.cuisineCategories.filter(c => c.name !== name) }));
+    setSaveState('idle');
+  };
+
+  // --- default filters (draft) ---
+  const filterGroups = useMemo(() => buildFilterGroups(allAreas, draft.categories), [allAreas, draft.categories]);
+  const people = useMemo(
+    () => Array.from(new Set(restaurants.map(r => r.addedBy).filter(Boolean))).sort(),
+    [restaurants],
+  );
+
+  const updateDraft = (patch: Partial<AppSettings>) => {
+    if (!canEdit) return;
+    setDraft(prev => ({ ...prev, ...patch }));
+    setSaveState('idle');
+  };
+
+  const handleSaveAll = async () => {
+    if (!canEdit) return;
+    setSaveState('saving');
+    setSaveError('');
+    try {
+      await saveAppSettings(draft);
+      onSaved(draft);
+      setSaveState('saved');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      setSaveError('設定の保存に失敗しました');
+      setSaveState('idle');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">⚙️ 設定</h1>
+            <p className="text-gray-600 mt-2">地図の初期表示位置・エリアカテゴリ・絞り込みを設定します</p>
+          </div>
+          <a href="#/" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap">
+            一覧に戻る
+          </a>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        {!canEdit && (
+          <div className="px-4 py-3 bg-orange-50 text-orange-800 rounded-md text-sm">
+            設定の変更には編集権限が必要です。内容の閲覧のみ可能です。
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-bold mb-2">初期表示位置</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            地図をクリックして、最初に表示したい場所を選んでください。クリックすると赤いピンが表示されます。
+            {draft.defaultCenter ? (
+              <span className="block mt-1 text-green-700">
+                選択中: 緯度 {draft.defaultCenter.lat.toFixed(4)} / 経度 {draft.defaultCenter.lng.toFixed(4)}
+              </span>
+            ) : (
+              <span className="block mt-1 text-gray-500">
+                未設定のため、最初に登録した店舗の位置が使われます。
+              </span>
+            )}
+          </p>
+
+          {!isLoaded ? (
+            <div>読み込み中...</div>
+          ) : (
+            <GoogleMap
+              mapContainerStyle={containerStyle}
+              center={initialMapCenter}
+              zoom={12}
+              options={{ clickableIcons: false }}
+              onLoad={map => {
+                mapRef.current = map;
+              }}
+              onClick={e => {
+                if (!e.latLng) return;
+                handlePick({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+              }}
+            >
+              {restaurants.map(restaurant => (
+                <Marker
+                  key={restaurant.id}
+                  position={{ lat: restaurant.latitude, lng: restaurant.longitude }}
+                  opacity={0.5}
+                />
+              ))}
+              {picked && (
+                <Marker
+                  position={picked}
+                  icon={{
+                    url:
+                      'data:image/svg+xml;charset=UTF-8,' +
+                      encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="#dc2626" stroke="white" stroke-width="1" d="M12 0C7.6 0 4 3.6 4 8c0 5.4 7 15.6 7.3 16a1 1 0 0 0 1.4 0C13 23.6 20 13.4 20 8c0-4.4-3.6-8-8-8z"/><circle cx="12" cy="8" r="3.2" fill="white"/></svg>',
+                      ),
+                    scaledSize: new window.google.maps.Size(36, 36),
+                    anchor: new window.google.maps.Point(18, 36),
+                  }}
+                />
+              )}
+            </GoogleMap>
+          )}
+
+          {canEdit && (
+            <div className="flex gap-2 justify-end mt-4">
+              <button
+                onClick={handleClearCenter}
+                className="px-4 py-2 text-sm bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                リセット(最初の登録店舗に戻す)
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-bold mb-2">エリアカテゴリ</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            複数のエリアをまとめて1つの大きなカテゴリとして扱えます。一覧・地図の絞り込みで、カテゴリ名がグループ見出しになり、その下に含まれるエリアが並びます。
+          </p>
+
+          {draft.categories.length > 0 && (
+            <ul className="mb-4 space-y-2">
+              {draft.categories.map(cat => (
+                <li key={cat.name} className="bg-gray-50 rounded-md px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{cat.name}</span>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleDeleteCategory(cat.name)}
+                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  <ul className="mt-1 pl-4 text-sm text-gray-600 list-disc list-inside">
+                    {cat.areas.map(a => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canEdit && (
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium mb-2">1. カテゴリ名を入力</label>
+              <input
+                type="text"
+                placeholder="例: 文京エリア"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-3"
+              />
+
+              <label className="block text-sm font-medium mb-2">2. 含めるエリアを選ぶ(クリックで選択/解除)</label>
+              <div className="flex flex-wrap gap-2 mb-1">
+                {allAreas.map(area => {
+                  const isSelected = newCategoryAreas.includes(area);
+                  return (
+                    <button
+                      type="button"
+                      key={area}
+                      onClick={() => toggleNewCategoryArea(area)}
+                      aria-pressed={isSelected}
+                      className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                        isSelected
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      {isSelected ? '✓ ' : ''}
+                      {area}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!canAddCategory && (newCategoryName.trim() !== '' || newCategoryAreas.length > 0) && (
+                <p className="text-xs text-gray-500 mt-2 mb-2">
+                  {newCategoryName.trim() === '' ? 'カテゴリ名を入力してください' : 'エリアを1つ以上選んでください'}
+                </p>
+              )}
+
+              <button
+                onClick={handleAddCategory}
+                disabled={!canAddCategory}
+                className="mt-3 px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                このカテゴリを一覧に追加
+              </button>
+              <p className="text-xs text-gray-400 mt-2">※ 下部の「設定をすべて保存」まで実行すると反映されます</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-bold mb-2">料理種別カテゴリ</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            複数の料理種別をまとめて1つの大きなカテゴリとして扱えます(例: 「麺類」にラーメン・つけめん・うどんをまとめる)。
+          </p>
+
+          {draft.cuisineCategories.length > 0 && (
+            <ul className="mb-4 space-y-2">
+              {draft.cuisineCategories.map(cat => (
+                <li key={cat.name} className="bg-gray-50 rounded-md px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{cat.name}</span>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleDeleteCuisineCategory(cat.name)}
+                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  <ul className="mt-1 pl-4 text-sm text-gray-600 list-disc list-inside">
+                    {cat.cuisines.map(c => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canEdit && (
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium mb-2">1. カテゴリ名を入力</label>
+              <input
+                type="text"
+                placeholder="例: 麺類"
+                value={newCuisineCategoryName}
+                onChange={e => setNewCuisineCategoryName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-3"
+              />
+
+              <label className="block text-sm font-medium mb-2">2. 含める料理種別を選ぶ(クリックで選択/解除)</label>
+              <div className="flex flex-wrap gap-2 mb-1">
+                {allCuisines.map(cuisine => {
+                  const isSelected = newCuisineCategoryCuisines.includes(cuisine);
+                  return (
+                    <button
+                      type="button"
+                      key={cuisine}
+                      onClick={() => toggleNewCuisineCategoryCuisine(cuisine)}
+                      aria-pressed={isSelected}
+                      className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                        isSelected
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      {isSelected ? '✓ ' : ''}
+                      {cuisine}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!canAddCuisineCategory && (newCuisineCategoryName.trim() !== '' || newCuisineCategoryCuisines.length > 0) && (
+                <p className="text-xs text-gray-500 mt-2 mb-2">
+                  {newCuisineCategoryName.trim() === '' ? 'カテゴリ名を入力してください' : '料理種別を1つ以上選んでください'}
+                </p>
+              )}
+
+              <button
+                onClick={handleAddCuisineCategory}
+                disabled={!canAddCuisineCategory}
+                className="mt-3 px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                このカテゴリを一覧に追加
+              </button>
+              <p className="text-xs text-gray-400 mt-2">※ 下部の「設定をすべて保存」まで実行すると反映されます</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-bold mb-2">絞り込みの初期設定</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            アプリを開いたときに、一覧・地図を最初から絞り込んだ状態で表示できます。
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">初期エリア・カテゴリ</label>
+              <select
+                value={draft.defaultAreaFilter}
+                onChange={e => updateDraft({ defaultAreaFilter: e.target.value })}
+                disabled={!canEdit}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+              >
+                <option value="">すべてのエリア</option>
+                {filterGroups.map(group => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map(opt => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">追加者で絞り込み</label>
+              <select
+                value={draft.defaultPersonFilter}
+                onChange={e => updateDraft({ defaultPersonFilter: e.target.value })}
+                disabled={!canEdit}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+              >
+                <option value="">すべての追加者</option>
+                {people.map(person => (
+                  <option key={person} value={person}>
+                    {person}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={draft.showAddedBy}
+              onChange={e => updateDraft({ showAddedBy: e.target.checked })}
+              disabled={!canEdit}
+            />
+            一覧に追加者の名前を表示する
+          </label>
+        </div>
+
+        {canEdit && (
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold">設定を保存</h2>
+                <p className="text-sm text-gray-600">このページ内のすべての変更をまとめて保存します。</p>
+              </div>
+              <button
+                onClick={handleSaveAll}
+                disabled={saveState === 'saving'}
+                className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 font-medium"
+              >
+                {saveState === 'saving' ? '保存中...' : '設定をすべて保存'}
+              </button>
+            </div>
+            {saveState === 'saved' && (
+              <div className="mt-3 px-4 py-2 bg-green-100 text-green-800 rounded-md text-sm font-medium">
+                ✓ すべての設定を保存しました
+              </div>
+            )}
+            {saveError && (
+              <div className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md text-sm font-medium">
+                {saveError}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAdmin && currentUid && (
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-bold mb-2">ユーザー管理</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              承認したアカウントは店舗の追加・編集・削除・カテゴリ管理ができるようになります。
+            </p>
+            <UserManagement currentUid={currentUid} />
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

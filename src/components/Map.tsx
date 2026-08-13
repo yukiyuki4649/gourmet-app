@@ -1,6 +1,8 @@
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Restaurant } from '../types/restaurant';
+import { MapCenter } from '../lib/appSettings';
+import { GOOGLE_MAPS_LIBRARIES } from '../lib/googleMapsLibraries';
 
 const containerStyle = {
   width: '100%',
@@ -9,27 +11,58 @@ const containerStyle = {
 
 interface MapProps {
   restaurants: Restaurant[];
+  selectedId?: string | null;
+  onSelectRestaurant?: (id: string) => void;
+  isFiltered?: boolean;
+  defaultCenter: MapCenter | null;
 }
 
-export function Map({ restaurants }: MapProps) {
+export function Map({ restaurants, selectedId, onSelectRestaurant, isFiltered, defaultCenter }: MapProps) {
   const [selectedMarker, setSelectedMarker] = useState<Restaurant | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
-  const center = useMemo(
-    () =>
-      restaurants.length > 0
-        ? { lat: restaurants[0].latitude, lng: restaurants[0].longitude }
-        : { lat: 35.6762, lng: 139.6503 },
-    [restaurants],
-  );
+  const center = useMemo(() => {
+    if (defaultCenter) return defaultCenter;
+    return restaurants.length > 0
+      ? { lat: restaurants[0].latitude, lng: restaurants[0].longitude }
+      : { lat: 35.6762, lng: 139.6503 };
+  }, [restaurants, defaultCenter]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const restaurant = restaurants.find(r => r.id === selectedId);
+    if (!restaurant) return;
+    setSelectedMarker(restaurant);
+    mapRef.current?.panTo({ lat: restaurant.latitude, lng: restaurant.longitude });
+  }, [selectedId, restaurants]);
+
+  useEffect(() => {
+    if (!isFiltered || !mapRef.current || restaurants.length === 0) return;
+    const bounds = new google.maps.LatLngBounds();
+    restaurants.forEach(r => bounds.extend({ lat: r.latitude, lng: r.longitude }));
+    mapRef.current.fitBounds(bounds, 48);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurants, isFiltered]);
 
   if (!isLoaded) return <div>読み込み中...</div>;
 
   return (
-    <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={12}>
+    <GoogleMap
+      mapContainerStyle={containerStyle}
+      center={center}
+      zoom={12}
+      onLoad={map => {
+        mapRef.current = map;
+      }}
+      onUnmount={() => {
+        mapRef.current = null;
+      }}
+    >
       {restaurants.map(restaurant => (
         <Marker
           key={restaurant.id}
@@ -37,7 +70,10 @@ export function Map({ restaurants }: MapProps) {
             lat: restaurant.latitude,
             lng: restaurant.longitude,
           }}
-          onClick={() => setSelectedMarker(restaurant)}
+          onClick={() => {
+            setSelectedMarker(restaurant);
+            onSelectRestaurant?.(restaurant.id);
+          }}
         />
       ))}
 

@@ -1,13 +1,28 @@
 import { useState } from 'react';
-import { RestaurantInput } from '../types/restaurant';
+import { PhotoInfo, RestaurantInput, Visibility } from '../types/restaurant';
+import { ComboSelect } from './ComboSelect';
+import { LocationPicker } from './LocationPicker';
+import { VisibilityPicker } from './VisibilityPicker';
+import { RecommendPicker } from './RecommendPicker';
+import { MapCenter } from '../lib/appSettings';
+import { UserProfile } from '../lib/auth';
+import { suggestRestaurantPhotos } from '../lib/unsplash';
+import { Restaurant } from '../types/restaurant';
 
 interface AddRestaurantFormProps {
   onSubmit: (data: RestaurantInput & { latitude: number; longitude: number }) => void;
   loading: boolean;
+  cuisineOptions: string[];
+  areaOptions: string[];
+  addedByName: string;
+  addedByUid: string;
+  defaultCenter: MapCenter | null;
+  users: UserProfile[];
+  allRestaurants: Restaurant[];
 }
 
-export function AddRestaurantForm({ onSubmit, loading }: AddRestaurantFormProps) {
-  const [formData, setFormData] = useState({
+function makeInitialFormData(addedByName: string, addedByUid: string) {
+  return {
     name: '',
     cuisine: '',
     area: '',
@@ -17,39 +32,57 @@ export function AddRestaurantForm({ onSubmit, loading }: AddRestaurantFormProps)
     notes: '',
     latitude: 0,
     longitude: 0,
-  });
+    addedBy: addedByName,
+    addedByUid,
+    visibility: 'public' as Visibility,
+    visibleToUids: [] as string[],
+    exteriorPhoto: null as PhotoInfo | null,
+    dishPhoto: null as PhotoInfo | null,
+    recommendedIds: [] as string[],
+  };
+}
+
+export function AddRestaurantForm({
+  onSubmit,
+  loading,
+  cuisineOptions,
+  areaOptions,
+  addedByName,
+  addedByUid,
+  defaultCenter,
+  users,
+  allRestaurants,
+}: AddRestaurantFormProps) {
+  const [formData, setFormData] = useState(() => makeInitialFormData(addedByName, addedByUid));
+  const [fetchingPhotos, setFetchingPhotos] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'latitude' || name === 'longitude' ? parseFloat(value) : value,
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.cuisine || !formData.area) {
       alert('店名、料理、エリアは必須項目です');
       return;
     }
-    onSubmit(formData);
-    setFormData({
-      name: '',
-      cuisine: '',
-      area: '',
-      overallRating: 'B',
-      tasteRating: 'B',
-      valuRating: 'B',
-      notes: '',
-      latitude: 0,
-      longitude: 0,
-    });
+
+    setFetchingPhotos(true);
+    const { exteriorPhoto, dishPhoto } = await suggestRestaurantPhotos(formData.cuisine).catch(() => ({
+      exteriorPhoto: null,
+      dishPhoto: null,
+    }));
+    setFetchingPhotos(false);
+
+    onSubmit({ ...formData, exteriorPhoto, dishPhoto });
+    setFormData(makeInitialFormData(addedByName, addedByUid));
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 mb-6">
       <h2 className="text-xl font-bold mb-4">新規店舗追加</h2>
+      <p className="text-sm text-gray-500 mb-4">追加した人として「{addedByName}」が記録されます</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <input
@@ -61,22 +94,20 @@ export function AddRestaurantForm({ onSubmit, loading }: AddRestaurantFormProps)
           className="px-3 py-2 border border-gray-300 rounded-md"
           required
         />
-        <input
-          type="text"
+        <ComboSelect
           name="cuisine"
           placeholder="料理種別"
           value={formData.cuisine}
-          onChange={handleChange}
-          className="px-3 py-2 border border-gray-300 rounded-md"
+          options={cuisineOptions}
+          onChange={v => setFormData(prev => ({ ...prev, cuisine: v }))}
           required
         />
-        <input
-          type="text"
+        <ComboSelect
           name="area"
           placeholder="エリア"
           value={formData.area}
-          onChange={handleChange}
-          className="px-3 py-2 border border-gray-300 rounded-md"
+          options={areaOptions}
+          onChange={v => setFormData(prev => ({ ...prev, area: v }))}
           required
         />
 
@@ -111,32 +142,38 @@ export function AddRestaurantForm({ onSubmit, loading }: AddRestaurantFormProps)
             onChange={handleChange}
             className="px-3 py-2 border border-gray-300 rounded-md"
           >
-            <option value="A">CP: A</option>
-            <option value="B">CP: B</option>
-            <option value="C">CP: C</option>
-            <option value="D">CP: D</option>
+            <option value="A">コスパ: A</option>
+            <option value="B">コスパ: B</option>
+            <option value="C">コスパ: C</option>
+            <option value="D">コスパ: D</option>
           </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <input
-          type="number"
-          name="latitude"
-          placeholder="緯度"
-          value={formData.latitude}
-          onChange={handleChange}
-          step="0.0001"
-          className="px-3 py-2 border border-gray-300 rounded-md"
+      <div className="mb-4">
+        <LocationPicker
+          latitude={formData.latitude}
+          longitude={formData.longitude}
+          onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+          defaultCenter={defaultCenter}
         />
-        <input
-          type="number"
-          name="longitude"
-          placeholder="経度"
-          value={formData.longitude}
-          onChange={handleChange}
-          step="0.0001"
-          className="px-3 py-2 border border-gray-300 rounded-md"
+      </div>
+
+      <div className="mb-4">
+        <VisibilityPicker
+          visibility={formData.visibility}
+          visibleToUids={formData.visibleToUids}
+          onChange={(visibility, visibleToUids) => setFormData(prev => ({ ...prev, visibility, visibleToUids }))}
+          users={users}
+          currentUid={addedByUid}
+        />
+      </div>
+
+      <div className="mb-4">
+        <RecommendPicker
+          allRestaurants={allRestaurants}
+          selectedIds={formData.recommendedIds}
+          onChange={ids => setFormData(prev => ({ ...prev, recommendedIds: ids }))}
         />
       </div>
 
@@ -151,10 +188,10 @@ export function AddRestaurantForm({ onSubmit, loading }: AddRestaurantFormProps)
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || fetchingPhotos}
         className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 disabled:opacity-50"
       >
-        {loading ? '追加中...' : '追加'}
+        {fetchingPhotos ? '写真を検索中...' : loading ? '追加中...' : '追加'}
       </button>
     </form>
   );
