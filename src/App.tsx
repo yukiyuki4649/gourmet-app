@@ -279,6 +279,8 @@ export default function App() {
         categories={appSettings.categories}
         settings={personalSettings}
         onSaved={setPersonalSettings}
+        isSignedIn={!!authUser}
+        canEdit={canEdit}
       />
     );
   }
@@ -308,12 +310,9 @@ export default function App() {
             <h1 className="text-3xl font-bold text-gray-900">🍽️ グルメマップ</h1>
             <p className="text-gray-600 mt-2">飲食店の評価と位置情報を管理</p>
           </div>
-          <div className="flex items-center gap-3">
-            <AuthPanel user={authUser} profile={profile} onProfileChange={refreshProfile} />
-            <a href="#/settings" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap">
-              ⚙️ 設定
-            </a>
-          </div>
+          <a href="#/settings" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap shrink-0">
+            ⚙️ 設定
+          </a>
         </div>
       </header>
 
@@ -370,7 +369,11 @@ export default function App() {
           </div>
         )}
 
-        <div className="mt-8">
+        <div className="mt-8 flex justify-end">
+          <AuthPanel user={authUser} profile={profile} onProfileChange={refreshProfile} />
+        </div>
+
+        <div className="mt-4">
           <h2 className="text-2xl font-bold mb-4">統計</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow p-4">

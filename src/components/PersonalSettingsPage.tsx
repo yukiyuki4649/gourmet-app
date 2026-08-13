@@ -18,9 +18,18 @@ interface PersonalSettingsPageProps {
   categories: AreaCategory[];
   settings: PersonalSettings;
   onSaved: (settings: PersonalSettings) => void;
+  isSignedIn: boolean;
+  canEdit: boolean;
 }
 
-export function PersonalSettingsPage({ restaurants, categories, settings, onSaved }: PersonalSettingsPageProps) {
+export function PersonalSettingsPage({
+  restaurants,
+  categories,
+  settings,
+  onSaved,
+  isSignedIn,
+  canEdit,
+}: PersonalSettingsPageProps) {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: GOOGLE_MAPS_LIBRARIES,
@@ -84,9 +93,11 @@ export function PersonalSettingsPage({ restaurants, categories, settings, onSave
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <a href="#/admin" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap text-sm">
-              管理者設定
-            </a>
+            {isSignedIn && canEdit && (
+              <a href="#/admin" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap text-sm">
+                管理者設定
+              </a>
+            )}
             <a href="#/" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap">
               一覧に戻る
             </a>

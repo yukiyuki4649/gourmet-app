@@ -51,7 +51,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
         onClick={() => onSelect?.(restaurant)}
         className={`p-4 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-yellow-50 ring-2 ring-inset ring-yellow-400' : ''}`}
       >
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-3 mb-2">
               {canEdit && onBulkCheckChange && (
@@ -101,13 +101,13 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
           </div>
 
           {(restaurant.exteriorPhoto || restaurant.dishPhoto) && (
-            <div className="flex gap-2 shrink-0">
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
               {restaurant.exteriorPhoto && (
                 <img
                   src={restaurant.exteriorPhoto.url}
                   alt="外観"
                   onError={e => (e.currentTarget.style.display = 'none')}
-                  className="w-36 h-32 sm:w-44 sm:h-36 object-contain bg-gray-50 rounded-md border border-gray-100"
+                  className="w-full h-40 sm:w-36 sm:h-32 md:w-44 md:h-36 object-contain bg-gray-50 rounded-md border border-gray-100"
                 />
               )}
               {restaurant.dishPhoto && (
@@ -115,7 +115,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
                   src={restaurant.dishPhoto.url}
                   alt="料理"
                   onError={e => (e.currentTarget.style.display = 'none')}
-                  className="w-36 h-32 sm:w-44 sm:h-36 object-contain bg-gray-50 rounded-md border border-gray-100"
+                  className="w-full h-40 sm:w-36 sm:h-32 md:w-44 md:h-36 object-contain bg-gray-50 rounded-md border border-gray-100"
                 />
               )}
             </div>
