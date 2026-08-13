@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Restaurant } from '../types/restaurant';
 import { AppSettings, saveAppSettings } from '../lib/appSettings';
-import { AreaCategory, CuisineCategory, sortByOrder } from '../lib/categories';
+import { AreaCategory, CuisineCategory, sortByOrder, reorder } from '../lib/categories';
 import { UserManagement } from './UserManagement';
 
 interface AdminSettingsPageProps {
@@ -134,26 +134,21 @@ export function AdminSettingsPage({
     [restaurants, draft.areaOrder],
   );
 
-  const moveArea = (index: number, direction: -1 | 1) => {
-    if (!canManageCategories) return;
-    const target = index + direction;
-    if (target < 0 || target >= allAreas.length) return;
-    const next = [...allAreas];
-    [next[index], next[target]] = [next[target], next[index]];
-    setDraft(prev => ({ ...prev, areaOrder: next }));
+  const [draggedAreaIndex, setDraggedAreaIndex] = useState<number | null>(null);
+  const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
+
+  const handleAreaDrop = (dropIndex: number) => {
+    if (!canManageCategories || draggedAreaIndex === null || draggedAreaIndex === dropIndex) return;
+    setDraft(prev => ({ ...prev, areaOrder: reorder(allAreas, draggedAreaIndex, dropIndex) }));
     setSaveState('idle');
+    setDraggedAreaIndex(null);
   };
 
-  const moveCategory = (index: number, direction: -1 | 1) => {
-    if (!canManageCategories) return;
-    setDraft(prev => {
-      const target = index + direction;
-      if (target < 0 || target >= prev.categories.length) return prev;
-      const next = [...prev.categories];
-      [next[index], next[target]] = [next[target], next[index]];
-      return { ...prev, categories: next };
-    });
+  const handleCategoryDrop = (dropIndex: number) => {
+    if (!canManageCategories || draggedCategoryIndex === null || draggedCategoryIndex === dropIndex) return;
+    setDraft(prev => ({ ...prev, categories: reorder(prev.categories, draggedCategoryIndex, dropIndex) }));
     setSaveState('idle');
+    setDraggedCategoryIndex(null);
   };
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryAreas, setNewCategoryAreas] = useState<string[]>([]);
@@ -211,26 +206,21 @@ export function AdminSettingsPage({
     [restaurants, draft.cuisineOrder],
   );
 
-  const moveCuisine = (index: number, direction: -1 | 1) => {
-    if (!canManageCategories) return;
-    const target = index + direction;
-    if (target < 0 || target >= allCuisines.length) return;
-    const next = [...allCuisines];
-    [next[index], next[target]] = [next[target], next[index]];
-    setDraft(prev => ({ ...prev, cuisineOrder: next }));
+  const [draggedCuisineIndex, setDraggedCuisineIndex] = useState<number | null>(null);
+  const [draggedCuisineCategoryIndex, setDraggedCuisineCategoryIndex] = useState<number | null>(null);
+
+  const handleCuisineDrop = (dropIndex: number) => {
+    if (!canManageCategories || draggedCuisineIndex === null || draggedCuisineIndex === dropIndex) return;
+    setDraft(prev => ({ ...prev, cuisineOrder: reorder(allCuisines, draggedCuisineIndex, dropIndex) }));
     setSaveState('idle');
+    setDraggedCuisineIndex(null);
   };
 
-  const moveCuisineCategory = (index: number, direction: -1 | 1) => {
-    if (!canManageCategories) return;
-    setDraft(prev => {
-      const target = index + direction;
-      if (target < 0 || target >= prev.cuisineCategories.length) return prev;
-      const next = [...prev.cuisineCategories];
-      [next[index], next[target]] = [next[target], next[index]];
-      return { ...prev, cuisineCategories: next };
-    });
+  const handleCuisineCategoryDrop = (dropIndex: number) => {
+    if (!canManageCategories || draggedCuisineCategoryIndex === null || draggedCuisineCategoryIndex === dropIndex) return;
+    setDraft(prev => ({ ...prev, cuisineCategories: reorder(prev.cuisineCategories, draggedCuisineCategoryIndex, dropIndex) }));
     setSaveState('idle');
+    setDraggedCuisineCategoryIndex(null);
   };
   const [newCuisineCategoryName, setNewCuisineCategoryName] = useState('');
   const [newCuisineCategoryCuisines, setNewCuisineCategoryCuisines] = useState<string[]>([]);
@@ -375,33 +365,25 @@ export function AdminSettingsPage({
           <h2 className="text-lg font-bold mb-2">エリアカテゴリ</h2>
           <p className="text-sm text-gray-600 mb-4">
             複数のエリアをまとめて1つの大きなカテゴリとして扱えます。一覧・地図の絞り込みで、カテゴリ名がグループ見出しになり、その下に含まれるエリアが並びます。
+            {canManageCategories && ' ⠿ をドラッグしてカテゴリの並び順を変更できます。'}
           </p>
 
           {draft.categories.length > 0 && (
             <ul className="mb-4 space-y-2">
               {draft.categories.map((cat, index) => (
-                <li key={index} className="bg-gray-50 rounded-md px-3 py-2">
+                <li
+                  key={index}
+                  draggable={canManageCategories}
+                  onDragStart={() => setDraggedCategoryIndex(index)}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={() => handleCategoryDrop(index)}
+                  onDragEnd={() => setDraggedCategoryIndex(null)}
+                  className={`bg-gray-50 rounded-md px-3 py-2 ${
+                    draggedCategoryIndex === index ? 'opacity-40' : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-2">
-                    {canManageCategories && (
-                      <div className="flex flex-col shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => moveCategory(index, -1)}
-                          disabled={index === 0}
-                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveCategory(index, 1)}
-                          disabled={index === draft.categories.length - 1}
-                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                        >
-                          ▼
-                        </button>
-                      </div>
-                    )}
+                    {canManageCategories && <span className="shrink-0 text-gray-400 cursor-move select-none">⠿</span>}
                     {canManageCategories ? (
                       <input
                         type="text"
@@ -511,33 +493,25 @@ export function AdminSettingsPage({
           <h2 className="text-lg font-bold mb-2">料理種別カテゴリ</h2>
           <p className="text-sm text-gray-600 mb-4">
             複数の料理種別をまとめて1つの大きなカテゴリとして扱えます(例: 「麺類」にラーメン・つけめん・うどんをまとめる)。
+            {canManageCategories && ' ⠿ をドラッグしてカテゴリの並び順を変更できます。'}
           </p>
 
           {draft.cuisineCategories.length > 0 && (
             <ul className="mb-4 space-y-2">
               {draft.cuisineCategories.map((cat, index) => (
-                <li key={index} className="bg-gray-50 rounded-md px-3 py-2">
+                <li
+                  key={index}
+                  draggable={canManageCategories}
+                  onDragStart={() => setDraggedCuisineCategoryIndex(index)}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={() => handleCuisineCategoryDrop(index)}
+                  onDragEnd={() => setDraggedCuisineCategoryIndex(null)}
+                  className={`bg-gray-50 rounded-md px-3 py-2 ${
+                    draggedCuisineCategoryIndex === index ? 'opacity-40' : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-2">
-                    {canManageCategories && (
-                      <div className="flex flex-col shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => moveCuisineCategory(index, -1)}
-                          disabled={index === 0}
-                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveCuisineCategory(index, 1)}
-                          disabled={index === draft.cuisineCategories.length - 1}
-                          className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                        >
-                          ▼
-                        </button>
-                      </div>
-                    )}
+                    {canManageCategories && <span className="shrink-0 text-gray-400 cursor-move select-none">⠿</span>}
                     {canManageCategories ? (
                       <input
                         type="text"
@@ -648,7 +622,7 @@ export function AdminSettingsPage({
             <h2 className="text-lg font-bold mb-2">エリア名・料理種別名を変更</h2>
             <p className="text-sm text-gray-600 mb-4">
               名前を変更すると、その名前を使っているすべての店舗に反映されます。
-              {canManageCategories && '並び順(▲▼)の変更は「設定をすべて保存」で反映されます。'}
+              {canManageCategories && '⠿ をドラッグして並び替えられます(反映は「設定をすべて保存」で確定します)。'}
             </p>
 
             {renameMessage && (
@@ -660,28 +634,17 @@ export function AdminSettingsPage({
                 <h3 className="text-sm font-medium mb-2">エリア名</h3>
                 <ul className="space-y-2">
                   {allAreas.map((area, index) => (
-                    <li key={area} className="p-2 bg-gray-50 rounded-md space-y-1.5">
-                      <div className="flex gap-2">
-                        {canManageCategories && (
-                          <div className="flex flex-col shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => moveArea(index, -1)}
-                              disabled={index === 0}
-                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                            >
-                              ▲
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveArea(index, 1)}
-                              disabled={index === allAreas.length - 1}
-                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                            >
-                              ▼
-                            </button>
-                          </div>
-                        )}
+                    <li
+                      key={area}
+                      draggable={canManageCategories}
+                      onDragStart={() => setDraggedAreaIndex(index)}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={() => handleAreaDrop(index)}
+                      onDragEnd={() => setDraggedAreaIndex(null)}
+                      className={`p-2 bg-gray-50 rounded-md space-y-1.5 ${draggedAreaIndex === index ? 'opacity-40' : ''}`}
+                    >
+                      <div className="flex gap-2 items-center">
+                        {canManageCategories && <span className="shrink-0 text-gray-400 cursor-move select-none">⠿</span>}
                         <input
                           type="text"
                           value={areaRenameDrafts[area] ?? area}
@@ -732,28 +695,17 @@ export function AdminSettingsPage({
                 <h3 className="text-sm font-medium mb-2">料理種別名</h3>
                 <ul className="space-y-2">
                   {allCuisines.map((cuisine, index) => (
-                    <li key={cuisine} className="p-2 bg-gray-50 rounded-md space-y-1.5">
-                      <div className="flex gap-2">
-                        {canManageCategories && (
-                          <div className="flex flex-col shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => moveCuisine(index, -1)}
-                              disabled={index === 0}
-                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                            >
-                              ▲
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveCuisine(index, 1)}
-                              disabled={index === allCuisines.length - 1}
-                              className="px-1 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                            >
-                              ▼
-                            </button>
-                          </div>
-                        )}
+                    <li
+                      key={cuisine}
+                      draggable={canManageCategories}
+                      onDragStart={() => setDraggedCuisineIndex(index)}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={() => handleCuisineDrop(index)}
+                      onDragEnd={() => setDraggedCuisineIndex(null)}
+                      className={`p-2 bg-gray-50 rounded-md space-y-1.5 ${draggedCuisineIndex === index ? 'opacity-40' : ''}`}
+                    >
+                      <div className="flex gap-2 items-center">
+                        {canManageCategories && <span className="shrink-0 text-gray-400 cursor-move select-none">⠿</span>}
                         <input
                           type="text"
                           value={cuisineRenameDrafts[cuisine] ?? cuisine}
