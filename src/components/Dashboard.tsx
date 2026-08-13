@@ -228,7 +228,7 @@ export function Dashboard({
         </div>
       </div>
 
-      <div className="divide-y max-h-[72rem] overflow-y-auto">
+      <div className="divide-y max-h-[36rem] overflow-y-auto">
         {filtered.map(restaurant => (
           <RestaurantCard
             key={restaurant.id}
