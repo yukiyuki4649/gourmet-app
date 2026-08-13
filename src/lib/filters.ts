@@ -1,9 +1,12 @@
 import { Restaurant } from '../types/restaurant';
 
+export type LunchFilter = '' | 'lunch' | 'notLunch';
+
 export interface RestaurantFilters {
   effectiveAreas: string[] | null;
   effectiveCuisines: string[] | null;
   person: string;
+  lunch?: LunchFilter;
 }
 
 export function applyRestaurantFilters(restaurants: Restaurant[], filters: RestaurantFilters): Restaurant[] {
@@ -19,6 +22,11 @@ export function applyRestaurantFilters(restaurants: Restaurant[], filters: Resta
   }
   if (filters.person) {
     result = result.filter(r => r.addedBy === filters.person);
+  }
+  if (filters.lunch === 'lunch') {
+    result = result.filter(r => !!r.isLunch);
+  } else if (filters.lunch === 'notLunch') {
+    result = result.filter(r => !r.isLunch);
   }
 
   return result;

@@ -39,6 +39,7 @@ function makeInitialFormData(addedByName: string, addedByUid: string) {
     exteriorPhoto: null as PhotoInfo | null,
     dishPhoto: null as PhotoInfo | null,
     recommendedIds: [] as string[],
+    isLunch: false,
   };
 }
 
@@ -149,6 +150,15 @@ export function AddRestaurantForm({
           </select>
         </div>
       </div>
+
+      <label className="flex items-center gap-2 text-sm mb-4">
+        <input
+          type="checkbox"
+          checked={formData.isLunch}
+          onChange={e => setFormData(prev => ({ ...prev, isLunch: e.target.checked }))}
+        />
+        ランチ
+      </label>
 
       <div className="mb-4">
         <LocationPicker

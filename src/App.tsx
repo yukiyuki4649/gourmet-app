@@ -17,7 +17,7 @@ import {
   bulkUpdateRestaurants,
 } from './lib/db';
 import { resolveFilterAreas, resolveFilterCuisines } from './lib/categories';
-import { applyRestaurantFilters } from './lib/filters';
+import { applyRestaurantFilters, LunchFilter } from './lib/filters';
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from './lib/appSettings';
 import { PersonalSettings, loadPersonalSettings, savePersonalSettings } from './lib/personalSettings';
 import { onAuthChange, getUserProfile, listAllUsers, UserProfile } from './lib/auth';
@@ -39,6 +39,7 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cuisineFilter, setCuisineFilter] = useState('');
+  const [lunchFilter, setLunchFilter] = useState<LunchFilter>('');
 
   // Per-browser settings, no login required — loaded synchronously from localStorage.
   const [personalSettings, setPersonalSettings] = useState<PersonalSettings>(() => loadPersonalSettings());
@@ -145,11 +146,16 @@ export default function App() {
         effectiveAreas,
         effectiveCuisines,
         person: personalSettings.defaultPersonFilter,
+        lunch: lunchFilter,
       }),
-    [restaurants, effectiveAreas, effectiveCuisines, personalSettings.defaultPersonFilter],
+    [restaurants, effectiveAreas, effectiveCuisines, personalSettings.defaultPersonFilter, lunchFilter],
   );
 
-  const isFiltered = effectiveAreas !== null || effectiveCuisines !== null || personalSettings.defaultPersonFilter !== '';
+  const isFiltered =
+    effectiveAreas !== null ||
+    effectiveCuisines !== null ||
+    personalSettings.defaultPersonFilter !== '' ||
+    lunchFilter !== '';
 
   const cuisineOptions = useMemo(
     () => Array.from(new Set(restaurants.map(r => r.cuisine))).sort(),
@@ -357,6 +363,8 @@ export default function App() {
             onAreaFilterChange={setAreaFilter}
             cuisineFilter={cuisineFilter}
             onCuisineFilterChange={setCuisineFilter}
+            lunchFilter={lunchFilter}
+            onLunchFilterChange={setLunchFilter}
             personFilter={personalSettings.defaultPersonFilter}
             onClearPersonFilter={handleClearPersonFilter}
             showAddedBy={personalSettings.showAddedBy}

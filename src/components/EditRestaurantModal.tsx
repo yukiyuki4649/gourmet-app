@@ -46,6 +46,7 @@ export function EditRestaurantModal({
     dishPhoto: restaurant.dishPhoto ?? (null as PhotoInfo | null),
     customLink: restaurant.customLink ?? '',
     recommendedIds: restaurant.recommendedIds ?? ([] as string[]),
+    isLunch: restaurant.isLunch ?? false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -92,6 +93,7 @@ export function EditRestaurantModal({
                 dishPhoto: snapshot.dishPhoto ?? prev.dishPhoto,
                 customLink: snapshot.customLink ?? prev.customLink,
                 recommendedIds: snapshot.recommendedIds ?? prev.recommendedIds,
+                isLunch: snapshot.isLunch ?? prev.isLunch,
               }))
             }
           />
@@ -168,6 +170,15 @@ export function EditRestaurantModal({
               </select>
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-sm mb-4">
+            <input
+              type="checkbox"
+              checked={formData.isLunch}
+              onChange={e => setFormData(prev => ({ ...prev, isLunch: e.target.checked }))}
+            />
+            ランチ
+          </label>
 
           <div className="mb-4">
             <LocationPicker

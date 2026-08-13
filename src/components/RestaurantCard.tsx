@@ -74,6 +74,11 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
                       🔒 非公開
                     </span>
                   )}
+                  {restaurant.isLunch && (
+                    <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                      🍱 ランチ
+                    </span>
+                  )}
                 </h3>
                 <p className="text-sm text-gray-600">{restaurant.cuisine}</p>
               </div>

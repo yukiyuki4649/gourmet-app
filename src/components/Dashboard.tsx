@@ -11,7 +11,7 @@ import {
   resolveFilterCuisines,
   sortByOrder,
 } from '../lib/categories';
-import { applyRestaurantFilters } from '../lib/filters';
+import { applyRestaurantFilters, LunchFilter } from '../lib/filters';
 
 interface DashboardProps {
   restaurants: Restaurant[];
@@ -27,6 +27,8 @@ interface DashboardProps {
   onAreaFilterChange: (value: string) => void;
   cuisineFilter: string;
   onCuisineFilterChange: (value: string) => void;
+  lunchFilter: LunchFilter;
+  onLunchFilterChange: (value: LunchFilter) => void;
   personFilter: string;
   onClearPersonFilter: () => void;
   showAddedBy: boolean;
@@ -48,6 +50,8 @@ export function Dashboard({
   onAreaFilterChange,
   cuisineFilter,
   onCuisineFilterChange,
+  lunchFilter,
+  onLunchFilterChange,
   personFilter,
   onClearPersonFilter,
   showAddedBy,
@@ -107,7 +111,12 @@ export function Dashboard({
   }, [selectedId, areaFilter, cuisineFilter, sortBy]);
 
   const filtered = useMemo(() => {
-    let result = applyRestaurantFilters(restaurants, { effectiveAreas, effectiveCuisines, person: personFilter });
+    let result = applyRestaurantFilters(restaurants, {
+      effectiveAreas,
+      effectiveCuisines,
+      person: personFilter,
+      lunch: lunchFilter,
+    });
 
     if (sortBy === 'rating') {
       result = [...result].sort((a, b) => {
@@ -122,7 +131,7 @@ export function Dashboard({
     }
 
     return result;
-  }, [restaurants, sortBy, effectiveAreas, effectiveCuisines, personFilter]);
+  }, [restaurants, sortBy, effectiveAreas, effectiveCuisines, personFilter, lunchFilter]);
 
   const allFilteredChecked = filtered.length > 0 && filtered.every(r => checkedIds.has(r.id));
 
@@ -170,7 +179,7 @@ export function Dashboard({
           />
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">並べ替え</label>
             <select
@@ -221,6 +230,19 @@ export function Dashboard({
                   ))}
                 </optgroup>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">ランチで絞り込み</label>
+            <select
+              value={lunchFilter}
+              onChange={e => onLunchFilterChange(e.target.value as LunchFilter)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">すべて</option>
+              <option value="lunch">ランチのみ</option>
+              <option value="notLunch">ランチ以外</option>
             </select>
           </div>
 

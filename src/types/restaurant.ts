@@ -27,6 +27,7 @@ export interface Restaurant {
   dishPhoto?: PhotoInfo | null;
   customLink?: string;
   recommendedIds?: string[];
+  isLunch?: boolean;
 }
 
 export interface RestaurantHistoryEntry {
@@ -52,4 +53,5 @@ export interface RestaurantInput {
   dishPhoto?: PhotoInfo | null;
   customLink?: string;
   recommendedIds?: string[];
+  isLunch?: boolean;
 }
