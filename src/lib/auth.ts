@@ -11,8 +11,6 @@ import {
   setDoc,
   updateDoc,
   collection,
-  query,
-  where,
   getDocs,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -32,6 +30,12 @@ export interface UserProfile {
 }
 
 const USERS_COLLECTION = 'users';
+// Doc id IS the display name — a lightweight uniqueness index, separate from `users`
+// (which holds emails/roles and is not broadly readable). Firestore's own create-vs-update
+// distinction gives atomic "first writer wins" semantics here, which also closes a race
+// condition the old check-then-write approach had (two signups could both pass the
+// "not taken" check before either finished writing their profile).
+const USERNAMES_COLLECTION = 'usernames';
 
 export function onAuthChange(callback: (user: User | null) => void): () => void {
   return onAuthStateChanged(auth, callback);
@@ -44,9 +48,8 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 }
 
 export async function isDisplayNameTaken(displayName: string): Promise<boolean> {
-  const q = query(collection(db, USERS_COLLECTION), where('displayName', '==', displayName));
-  const snap = await getDocs(q);
-  return !snap.empty;
+  const snap = await getDoc(doc(db, USERNAMES_COLLECTION, displayName));
+  return snap.exists();
 }
 
 export async function signInWithGoogle(): Promise<User> {
@@ -61,7 +64,10 @@ export async function createProfile(uid: string, email: string, displayName: str
   if (!trimmedName) {
     throw new Error('表示名を入力してください');
   }
-  if (await isDisplayNameTaken(trimmedName)) {
+
+  try {
+    await setDoc(doc(db, USERNAMES_COLLECTION, trimmedName), { uid });
+  } catch {
     throw new Error('その表示名は既に使われています。別の名前を選んでください');
   }
 

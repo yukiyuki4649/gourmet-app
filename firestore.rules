@@ -56,15 +56,30 @@ service cloud.firestore {
       allow write: if canManageCategories();
     }
 
-    // User profiles / roles. A new signup may only create its own doc with role
-    // "pending" — nobody can self-promote to admin/approved. Only an admin can
-    // change someone's role afterwards.
+    // User profiles / roles. Contains email addresses, so reads are deliberately
+    // narrower than "any signed-in user": you can always read your own profile (needed
+    // right after signup, before you're approved, to show your pending status), but
+    // reading anyone else's — or listing the whole collection — requires canEdit().
+    // A new signup may only create its own doc with role "pending" — nobody can
+    // self-promote to admin/approved. Only an admin can change someone's role afterwards.
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn() && (request.auth.uid == userId || canEdit());
+      allow list: if canEdit();
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending';
       allow update, delete: if isAdmin();
+    }
+
+    // Display-name uniqueness index — doc id is the name itself, holding only the
+    // owning uid (no email/role). Kept separate from `users` so checking/claiming a
+    // name during signup doesn't require the broader users-collection read access.
+    // "create" is only reachable when no doc exists yet at that path, so this also
+    // gives atomic first-writer-wins semantics for free.
+    match /usernames/{name} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }

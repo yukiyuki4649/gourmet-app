@@ -8,6 +8,7 @@ import { RecommendPicker } from './RecommendPicker';
 import { MapCenter } from '../lib/appSettings';
 import { UserProfile } from '../lib/auth';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
+import { isSafeHref } from '../lib/safeUrl';
 
 interface EditRestaurantModalProps {
   restaurant: Restaurant;
@@ -58,6 +59,10 @@ export function EditRestaurantModal({
     e.preventDefault();
     if (!formData.name || !formData.cuisine || !formData.area) {
       alert('店名、料理、エリアは必須項目です');
+      return;
+    }
+    if (formData.customLink && !isSafeHref(formData.customLink)) {
+      alert('リンクは http:// または https:// で始まるURLを入力してください');
       return;
     }
     onSave(restaurant.id, formData);

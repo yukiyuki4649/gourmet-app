@@ -1,6 +1,7 @@
 import { forwardRef, useMemo } from 'react';
 import { Restaurant } from '../types/restaurant';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
+import { isSafeHref } from '../lib/safeUrl';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -95,7 +96,11 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
             )}
 
             <a
-              href={restaurant.customLink || googleMapsSearchUrl(restaurant.name, restaurant.area)}
+              href={
+                restaurant.customLink && isSafeHref(restaurant.customLink)
+                  ? restaurant.customLink
+                  : googleMapsSearchUrl(restaurant.name, restaurant.area)
+              }
               target="_blank"
               rel="noreferrer"
               onClick={e => e.stopPropagation()}

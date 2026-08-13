@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PhotoInfo } from '../types/restaurant';
 import { resizeImageToDataUrl } from '../lib/imageResize';
+import { isSafeHref } from '../lib/safeUrl';
 
 interface PhotoFieldProps {
   label: string;
@@ -73,7 +74,12 @@ export function PhotoField({ label, photo, onChange }: PhotoFieldProps) {
           {photo.creditName && (
             <p className="text-xs text-gray-400 mt-1">
               Photo by{' '}
-              <a href={photo.creditUrl} target="_blank" rel="noreferrer" className="underline">
+              <a
+                href={isSafeHref(photo.creditUrl) ? photo.creditUrl : '#'}
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
                 {photo.creditName}
               </a>{' '}
               on Unsplash
