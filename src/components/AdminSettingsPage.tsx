@@ -37,6 +37,8 @@ export function AdminSettingsPage({
   // --- area/cuisine name renaming (applies immediately across all restaurants) ---
   const [areaRenameDrafts, setAreaRenameDrafts] = useState<Record<string, string>>({});
   const [cuisineRenameDrafts, setCuisineRenameDrafts] = useState<Record<string, string>>({});
+  const [areaMergeTargets, setAreaMergeTargets] = useState<Record<string, string>>({});
+  const [cuisineMergeTargets, setCuisineMergeTargets] = useState<Record<string, string>>({});
   const [renamingArea, setRenamingArea] = useState<string | null>(null);
   const [renamingCuisine, setRenamingCuisine] = useState<string | null>(null);
   const [renameMessage, setRenameMessage] = useState('');
@@ -96,45 +98,34 @@ export function AdminSettingsPage({
   // "Deleting" an area/cuisine name isn't meaningful on its own — every restaurant
   // requires one, so removing a name means folding its restaurants into another
   // existing name instead. This reuses the same rename plumbing with an explicit,
-  // user-chosen merge target rather than a freeform typed value.
+  // user-chosen merge target (picked from a <select>, not a typed prompt — a
+  // window.prompt()-based version of this shipped first but required the user to
+  // type an exact, case/whitespace-sensitive match, which was too easy to get wrong
+  // and silently fail).
   const handleDeleteArea = (oldName: string) => {
-    const others = allAreas.filter(a => a !== oldName);
-    if (others.length === 0) {
-      alert('統合先にできる他のエリアがありません');
-      return;
-    }
-    const target = window.prompt(
-      `「${oldName}」を削除します。統合先にする既存のエリア名を入力してください。\n\n既存のエリア: ${others.join('、')}`,
-    );
+    const target = areaMergeTargets[oldName];
     if (!target) return;
-    const trimmedTarget = target.trim();
-    if (!others.includes(trimmedTarget)) {
-      alert('入力された名前が既存のエリアと一致しません');
-      return;
-    }
     const count = restaurants.filter(r => r.area === oldName).length;
-    if (!window.confirm(`「${oldName}」(${count}件の店舗)を削除し、「${trimmedTarget}」に統合します。よろしいですか?`)) return;
-    performRenameArea(oldName, trimmedTarget);
+    if (!window.confirm(`「${oldName}」(${count}件の店舗)を削除し、「${target}」に統合します。よろしいですか?`)) return;
+    performRenameArea(oldName, target);
+    setAreaMergeTargets(prev => {
+      const next = { ...prev };
+      delete next[oldName];
+      return next;
+    });
   };
 
   const handleDeleteCuisine = (oldName: string) => {
-    const others = allCuisines.filter(c => c !== oldName);
-    if (others.length === 0) {
-      alert('統合先にできる他の料理種別がありません');
-      return;
-    }
-    const target = window.prompt(
-      `「${oldName}」を削除します。統合先にする既存の料理種別名を入力してください。\n\n既存の料理種別: ${others.join('、')}`,
-    );
+    const target = cuisineMergeTargets[oldName];
     if (!target) return;
-    const trimmedTarget = target.trim();
-    if (!others.includes(trimmedTarget)) {
-      alert('入力された名前が既存の料理種別と一致しません');
-      return;
-    }
     const count = restaurants.filter(r => r.cuisine === oldName).length;
-    if (!window.confirm(`「${oldName}」(${count}件の店舗)を削除し、「${trimmedTarget}」に統合します。よろしいですか?`)) return;
-    performRenameCuisine(oldName, trimmedTarget);
+    if (!window.confirm(`「${oldName}」(${count}件の店舗)を削除し、「${target}」に統合します。よろしいですか?`)) return;
+    performRenameCuisine(oldName, target);
+    setCuisineMergeTargets(prev => {
+      const next = { ...prev };
+      delete next[oldName];
+      return next;
+    });
   };
 
   // --- area categories (draft) ---
@@ -573,31 +564,49 @@ export function AdminSettingsPage({
                 <h3 className="text-sm font-medium mb-2">エリア名</h3>
                 <ul className="space-y-2">
                   {allAreas.map(area => (
-                    <li key={area} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={areaRenameDrafts[area] ?? area}
-                        onChange={e => setAreaRenameDrafts(prev => ({ ...prev, [area]: e.target.value }))}
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRenameArea(area)}
-                        disabled={
-                          renamingArea === area || (areaRenameDrafts[area] ?? area).trim() === area || !(areaRenameDrafts[area] ?? area).trim()
-                        }
-                        className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        {renamingArea === area ? '変更中...' : '変更'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteArea(area)}
-                        disabled={renamingArea === area}
-                        className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        削除
-                      </button>
+                    <li key={area} className="p-2 bg-gray-50 rounded-md space-y-1.5">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={areaRenameDrafts[area] ?? area}
+                          onChange={e => setAreaRenameDrafts(prev => ({ ...prev, [area]: e.target.value }))}
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRenameArea(area)}
+                          disabled={
+                            renamingArea === area || (areaRenameDrafts[area] ?? area).trim() === area || !(areaRenameDrafts[area] ?? area).trim()
+                          }
+                          className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {renamingArea === area ? '変更中...' : '変更'}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <select
+                          value={areaMergeTargets[area] ?? ''}
+                          onChange={e => setAreaMergeTargets(prev => ({ ...prev, [area]: e.target.value }))}
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded-md"
+                        >
+                          <option value="">統合先を選んで削除...</option>
+                          {allAreas
+                            .filter(a => a !== area)
+                            .map(a => (
+                              <option key={a} value={a}>
+                                {a} に統合
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteArea(area)}
+                          disabled={renamingArea === area || !areaMergeTargets[area]}
+                          className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          削除
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -607,33 +616,51 @@ export function AdminSettingsPage({
                 <h3 className="text-sm font-medium mb-2">料理種別名</h3>
                 <ul className="space-y-2">
                   {allCuisines.map(cuisine => (
-                    <li key={cuisine} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={cuisineRenameDrafts[cuisine] ?? cuisine}
-                        onChange={e => setCuisineRenameDrafts(prev => ({ ...prev, [cuisine]: e.target.value }))}
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRenameCuisine(cuisine)}
-                        disabled={
-                          renamingCuisine === cuisine ||
-                          (cuisineRenameDrafts[cuisine] ?? cuisine).trim() === cuisine ||
-                          !(cuisineRenameDrafts[cuisine] ?? cuisine).trim()
-                        }
-                        className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        {renamingCuisine === cuisine ? '変更中...' : '変更'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCuisine(cuisine)}
-                        disabled={renamingCuisine === cuisine}
-                        className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        削除
-                      </button>
+                    <li key={cuisine} className="p-2 bg-gray-50 rounded-md space-y-1.5">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={cuisineRenameDrafts[cuisine] ?? cuisine}
+                          onChange={e => setCuisineRenameDrafts(prev => ({ ...prev, [cuisine]: e.target.value }))}
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRenameCuisine(cuisine)}
+                          disabled={
+                            renamingCuisine === cuisine ||
+                            (cuisineRenameDrafts[cuisine] ?? cuisine).trim() === cuisine ||
+                            !(cuisineRenameDrafts[cuisine] ?? cuisine).trim()
+                          }
+                          className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {renamingCuisine === cuisine ? '変更中...' : '変更'}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <select
+                          value={cuisineMergeTargets[cuisine] ?? ''}
+                          onChange={e => setCuisineMergeTargets(prev => ({ ...prev, [cuisine]: e.target.value }))}
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded-md"
+                        >
+                          <option value="">統合先を選んで削除...</option>
+                          {allCuisines
+                            .filter(c => c !== cuisine)
+                            .map(c => (
+                              <option key={c} value={c}>
+                                {c} に統合
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCuisine(cuisine)}
+                          disabled={renamingCuisine === cuisine || !cuisineMergeTargets[cuisine]}
+                          className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          削除
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
