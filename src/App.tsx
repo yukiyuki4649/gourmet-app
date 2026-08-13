@@ -7,6 +7,7 @@ import { EditRestaurantModal } from './components/EditRestaurantModal';
 import { PersonalSettingsPage } from './components/PersonalSettingsPage';
 import { AdminSettingsPage } from './components/AdminSettingsPage';
 import { AuthPanel } from './components/AuthPanel';
+import { SiteQRCode } from './components/SiteQRCode';
 import { Restaurant, RestaurantInput } from './types/restaurant';
 import {
   getAllRestaurants,
@@ -418,6 +419,8 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        <SiteQRCode />
       </main>
 
       {editingRestaurant && canEdit && (
