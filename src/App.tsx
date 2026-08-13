@@ -14,8 +14,6 @@ import {
   deleteRestaurant,
   updateRestaurant,
   bulkUpdateRestaurants,
-  renameArea,
-  renameCuisine,
 } from './lib/db';
 import { resolveFilterAreas, resolveFilterCuisines } from './lib/categories';
 import { applyRestaurantFilters } from './lib/filters';
@@ -224,12 +222,23 @@ export default function App() {
     }
   };
 
-  // Renaming an area/cuisine touches restaurant docs directly (allowed to any canEdit
-  // user), then best-effort patches the shared category groupings that reference the
-  // old name — that second step needs canManageCategories, so it's silently skipped
-  // for users who only have canEdit (the area rename itself still succeeds for them).
+  // Renaming an area/cuisine writes directly to restaurant docs by id (allowed to any
+  // canEdit user, per the Firestore write rule), then best-effort patches the shared
+  // category groupings that reference the old name — that second step needs
+  // canManageCategories, so it's silently skipped for users who only have canEdit
+  // (the area rename itself still succeeds for them).
+  //
+  // Deliberately NOT a fresh Firestore query (e.g. where('area','==',oldName)) — an
+  // unfiltered-by-visibility list query like that gets rejected outright by the
+  // security rules for the same reason getAllRestaurants had to be split into
+  // per-visibility queries (see the comment on getAllRestaurants in db.ts). Instead
+  // this reuses the `restaurants` state already loaded here, which is already
+  // properly visibility-scoped for the current viewer, and writes by direct doc id.
   const handleRenameArea = async (oldName: string, newName: string) => {
-    await renameArea(oldName, newName);
+    const ids = restaurants.filter(r => r.area === oldName).map(r => r.id);
+    if (ids.length > 0) {
+      await bulkUpdateRestaurants(ids, { area: newName });
+    }
     if (canManageCategories) {
       const nextCategories = appSettings.categories.map(c => ({
         ...c,
@@ -243,7 +252,10 @@ export default function App() {
   };
 
   const handleRenameCuisine = async (oldName: string, newName: string) => {
-    await renameCuisine(oldName, newName);
+    const ids = restaurants.filter(r => r.cuisine === oldName).map(r => r.id);
+    if (ids.length > 0) {
+      await bulkUpdateRestaurants(ids, { cuisine: newName });
+    }
     if (canManageCategories) {
       const nextCuisineCategories = appSettings.cuisineCategories.map(c => ({
         ...c,

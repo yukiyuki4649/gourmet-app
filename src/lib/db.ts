@@ -104,24 +104,6 @@ export async function bulkUpdateRestaurants(ids: string[], data: Partial<Restaur
   await batch.commit();
 }
 
-/** Renames an area (or cuisine) across every restaurant that currently has the old value. */
-async function renameFieldValue(field: 'area' | 'cuisine', oldValue: string, newValue: string): Promise<void> {
-  const restaurantsRef = collection(db, COLLECTION_NAME);
-  const snap = await getDocs(query(restaurantsRef, where(field, '==', oldValue)));
-  if (snap.empty) return;
-  const batch = writeBatch(db);
-  snap.docs.forEach(d => batch.update(d.ref, { [field]: newValue }));
-  await batch.commit();
-}
-
-export function renameArea(oldName: string, newName: string): Promise<void> {
-  return renameFieldValue('area', oldName, newName);
-}
-
-export function renameCuisine(oldName: string, newName: string): Promise<void> {
-  return renameFieldValue('cuisine', oldName, newName);
-}
-
 export async function getRestaurantHistory(id: string): Promise<RestaurantHistoryEntry[]> {
   const historyRef = collection(db, COLLECTION_NAME, id, HISTORY_SUBCOLLECTION);
   const snap = await getDocs(query(historyRef, orderBy('editedAt', 'desc')));
