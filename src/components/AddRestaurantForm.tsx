@@ -30,9 +30,9 @@ function makeInitialFormData(addedByName: string, addedByUid: string) {
     name: '',
     cuisines: [] as string[],
     area: '',
-    overallRating: 'B',
-    tasteRating: 'B',
-    valuRating: 'B',
+    overallRating: '',
+    tasteRating: '',
+    valuRating: '',
     notes: '',
     latitude: 0,
     longitude: 0,
@@ -124,6 +124,7 @@ export function AddRestaurantForm({
             onChange={handleChange}
             className="px-3 py-2 border border-gray-300 rounded-md"
           >
+            <option value="">総合: 未評価</option>
             <option value="A">総合: A</option>
             <option value="B">総合: B</option>
             <option value="C">総合: C</option>
@@ -136,6 +137,7 @@ export function AddRestaurantForm({
             onChange={handleChange}
             className="px-3 py-2 border border-gray-300 rounded-md"
           >
+            <option value="">味: 未評価</option>
             <option value="A">味: A</option>
             <option value="B">味: B</option>
             <option value="C">味: C</option>
@@ -148,6 +150,7 @@ export function AddRestaurantForm({
             onChange={handleChange}
             className="px-3 py-2 border border-gray-300 rounded-md"
           >
+            <option value="">コスパ: 未評価</option>
             <option value="A">コスパ: A</option>
             <option value="B">コスパ: B</option>
             <option value="C">コスパ: C</option>

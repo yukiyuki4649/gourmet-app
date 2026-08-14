@@ -64,8 +64,8 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
                   className="mt-1.5 shrink-0"
                 />
               )}
-              <span className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium ${ratingColor[restaurant.overallRating as keyof typeof ratingColor] || 'bg-gray-100'}`}>
-                {restaurant.overallRating}
+              <span className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium ${ratingColor[restaurant.overallRating as keyof typeof ratingColor] || 'bg-gray-100 text-gray-500'}`}>
+                {restaurant.overallRating || '未評価'}
               </span>
               <div>
                 <h3 className="font-bold text-lg flex items-center gap-2">
@@ -87,7 +87,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
 
             <div className="text-sm text-gray-600 mb-2">
               <p>エリア: {restaurant.area}</p>
-              <p>味: {restaurant.tasteRating} | コスパ: {restaurant.valuRating}</p>
+              <p>味: {restaurant.tasteRating || '未評価'} | コスパ: {restaurant.valuRating || '未評価'}</p>
               {showAddedBy && restaurant.addedBy && <p>追加者: {restaurant.addedBy}</p>}
             </div>
 
