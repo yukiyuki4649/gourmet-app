@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { UserProfile, signInWithGoogle, completeRedirectSignIn, createProfile, logout } from '../lib/auth';
+import {
+  UserProfile,
+  signInWithGoogle,
+  completeRedirectSignIn,
+  createProfile,
+  logout,
+  isInAppBrowser,
+} from '../lib/auth';
 
 interface AuthPanelProps {
   user: User | null;
@@ -149,6 +156,20 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
             キャンセルしてログアウト
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Logged out, and opened inside an app's built-in browser (LINE/Instagram/etc.) —
+  // Google blocks its own sign-in flow in this environment, and there's no code-side
+  // workaround, so point the person at the fix instead of letting the button silently fail.
+  if (isInAppBrowser()) {
+    return (
+      <div className="max-w-xs text-xs bg-amber-50 border border-amber-300 rounded-md p-3">
+        <p className="font-semibold text-amber-800 mb-1">⚠️ このアプリ内ではログインできません</p>
+        <p className="text-amber-700">
+          LINEやInstagramなどのアプリ内ブラウザでは、安全のためGoogleログインがブロックされます。右上のメニュー(「…」または⋮)から「外部ブラウザで開く」「Safari/Chromeで開く」を選んで開き直してください。
+        </p>
       </div>
     );
   }

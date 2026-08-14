@@ -73,6 +73,16 @@ function isMobileDevice(): boolean {
 }
 
 /**
+ * Google actively blocks its OAuth sign-in flow inside embedded "in-app browser"
+ * WebViews (LINE, Instagram, Facebook, X/Twitter, etc.) as an anti-phishing measure —
+ * this can't be worked around from app code (neither popup nor redirect will succeed),
+ * the user has to reopen the page in a real browser (Safari/Chrome).
+ */
+export function isInAppBrowser(): boolean {
+  return /Line\/|FBAN|FBAV|Instagram|Twitter|MicroMessenger|KAKAOTALK/i.test(navigator.userAgent);
+}
+
+/**
  * Popup-based sign-in (signInWithPopup) is unreliable on mobile browsers — popups get
  * silently blocked or the flow just fails with no useful error — so mobile devices use
  * the redirect flow instead (navigates away to Google and back). On redirect, this
