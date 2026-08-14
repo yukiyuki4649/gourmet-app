@@ -19,7 +19,7 @@ import {
   updateRestaurant,
   bulkUpdateRestaurants,
 } from './lib/db';
-import { resolveFilterAreas, resolveFilterCuisines } from './lib/categories';
+import { resolveFilterAreas, resolveFilterCuisines, sortByOrder } from './lib/categories';
 import { applyRestaurantFilters, LunchFilter } from './lib/filters';
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from './lib/appSettings';
 import { PersonalSettings, loadPersonalSettings, savePersonalSettings } from './lib/personalSettings';
@@ -183,12 +183,12 @@ export default function App() {
     lunchFilter !== '';
 
   const cuisineOptions = useMemo(
-    () => Array.from(new Set(restaurants.map(r => r.cuisine))).sort(),
-    [restaurants],
+    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.cuisine))), appSettings.cuisineOrder),
+    [restaurants, appSettings.cuisineOrder],
   );
   const areaOptions = useMemo(
-    () => Array.from(new Set(restaurants.map(r => r.area))).sort(),
-    [restaurants],
+    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.area))), appSettings.areaOrder),
+    [restaurants, appSettings.areaOrder],
   );
 
   const reloadRestaurants = async () => {
