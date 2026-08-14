@@ -51,7 +51,7 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
   const handleDeleteAccount = async () => {
     if (
       !window.confirm(
-        '退会すると、アカウント情報が削除され、二度と元に戻せません。店舗の追加・編集ができなくなります(再度ログインすれば承認待ちから再登録できます)。本当に退会しますか?',
+        '退会すると、アカウント情報が削除され、二度と元に戻せません。店舗の追加・編集ができなくなります(再度ログインすれば承認待ちから再登録できます)。本人確認のため、この後もう一度Googleのログイン画面が表示されます。本当に退会しますか?',
       )
     ) {
       return;

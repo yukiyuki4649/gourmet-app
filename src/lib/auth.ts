@@ -7,7 +7,6 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import { FirebaseError } from 'firebase/app';
 import {
   doc,
   getDoc,
@@ -127,31 +126,25 @@ export async function logout(): Promise<void> {
  * dangling reference, same as any other Firestore doc with no referential integrity —
  * addedBy's display-name string still shows correctly either way).
  *
- * Firestore docs are deleted first, while still authenticated, so a failure here
- * leaves the account intact rather than orphaning the profile. deleteUser() can fail
- * with auth/requires-recent-login if the session is old; in that case we
- * re-authenticate via a fresh Google popup and retry once.
+ * deleteUser() requires a "recent" login (auth/requires-recent-login otherwise), so
+ * this re-authenticates via a fresh Google popup FIRST, as the very first async step —
+ * doing it later (e.g. only after a failed delete attempt) puts real network round
+ * trips between the click and the popup, and browsers then block it as no longer
+ * gesture-triggered. Firestore docs are deleted after that, so a failure there still
+ * leaves the (now freshly-authenticated) account intact rather than orphaning it.
  */
 export async function deleteMyAccount(): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error('ログインしていません');
+
+  await reauthenticateWithPopup(user, new GoogleAuthProvider());
 
   const profile = await getUserProfile(user.uid);
   if (profile?.displayName) {
     await deleteDoc(doc(db, USERNAMES_COLLECTION, profile.displayName));
   }
   await deleteDoc(doc(db, USERS_COLLECTION, user.uid));
-
-  try {
-    await deleteUser(user);
-  } catch (error) {
-    if (error instanceof FirebaseError && error.code === 'auth/requires-recent-login') {
-      await reauthenticateWithPopup(user, new GoogleAuthProvider());
-      await deleteUser(user);
-    } else {
-      throw error;
-    }
-  }
+  await deleteUser(user);
 }
 
 export async function listAllUsers(): Promise<UserProfile[]> {
