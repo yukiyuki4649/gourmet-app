@@ -7,6 +7,7 @@ import { EditRestaurantModal } from './components/EditRestaurantModal';
 import { PersonalSettingsPage } from './components/PersonalSettingsPage';
 import { AdminSettingsPage } from './components/AdminSettingsPage';
 import { AuthPanel } from './components/AuthPanel';
+import { SecurityInfoPage } from './components/SecurityInfoPage';
 import { SiteQRCode } from './components/SiteQRCode';
 import { Restaurant, RestaurantInput } from './types/restaurant';
 import {
@@ -26,9 +27,10 @@ import { onAuthChange, getUserProfile, listUsernames, UserProfile, UsernameEntry
 import { auth } from './lib/firebase';
 import './index.css';
 
-function getRouteFromHash(): 'home' | 'settings' | 'admin' {
+function getRouteFromHash(): 'home' | 'settings' | 'admin' | 'security' {
   if (window.location.hash === '#/admin') return 'admin';
   if (window.location.hash === '#/settings') return 'settings';
+  if (window.location.hash === '#/security') return 'security';
   return 'home';
 }
 
@@ -340,6 +342,10 @@ export default function App() {
     );
   }
 
+  if (route === 'security') {
+    return <SecurityInfoPage />;
+  }
+
   if (route === 'admin') {
     return (
       <AdminSettingsPage
@@ -430,7 +436,10 @@ export default function App() {
           </div>
         )}
 
-        <div className="mt-8 flex justify-end">
+        <div className="mt-8 flex items-center justify-end gap-3">
+          <a href="#/security" className="text-sm text-gray-500 hover:underline whitespace-nowrap">
+            🔒 このサイトのセキュリティについて
+          </a>
           <AuthPanel user={authUser} profile={profile} onProfileChange={refreshProfile} />
         </div>
 
