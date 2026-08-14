@@ -370,8 +370,10 @@ export default function App() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">🍽️ グルメマップ</h1>
-            <p className="text-gray-600 mt-2">飲食店の評価と位置情報を管理</p>
+            <h1 className="text-3xl font-bold text-gray-900">🍽️ 勝手にグルメマップ</h1>
+            <p className="text-xs text-gray-500 mt-2">
+              管理者を含む、お酒好きな数人が勝手に評価しているグルメメモです。味の好みは人それぞれなので、あくまで参考程度にご覧ください。
+            </p>
           </div>
           <a href="#/settings" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap shrink-0">
             ⚙️ 設定
