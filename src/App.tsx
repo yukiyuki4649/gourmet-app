@@ -489,6 +489,8 @@ export default function App() {
           users={allUsers}
           currentUid={authUser?.uid ?? null}
           allRestaurants={restaurants}
+          cuisineOptions={cuisineOptions}
+          areaOptions={areaOptions}
         />
       )}
     </div>

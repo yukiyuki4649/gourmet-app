@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PhotoInfo, Restaurant, Visibility } from '../types/restaurant';
+import { ComboSelect } from './ComboSelect';
 import { LocationPicker } from './LocationPicker';
 import { VisibilityPicker } from './VisibilityPicker';
 import { PhotoField } from './PhotoField';
@@ -19,6 +20,8 @@ interface EditRestaurantModalProps {
   users: UsernameEntry[];
   currentUid: string | null;
   allRestaurants: Restaurant[];
+  cuisineOptions: string[];
+  areaOptions: string[];
 }
 
 export function EditRestaurantModal({
@@ -30,6 +33,8 @@ export function EditRestaurantModal({
   users,
   currentUid,
   allRestaurants,
+  cuisineOptions,
+  areaOptions,
 }: EditRestaurantModalProps) {
   const [formData, setFormData] = useState({
     name: restaurant.name,
@@ -115,22 +120,20 @@ export function EditRestaurantModal({
               className="px-3 py-2 border border-gray-300 rounded-md"
               required
             />
-            <input
-              type="text"
+            <ComboSelect
               name="cuisine"
               placeholder="料理種別"
               value={formData.cuisine}
-              onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-md"
+              options={cuisineOptions}
+              onChange={v => setFormData(prev => ({ ...prev, cuisine: v }))}
               required
             />
-            <input
-              type="text"
+            <ComboSelect
               name="area"
               placeholder="エリア"
               value={formData.area}
-              onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-md"
+              options={areaOptions}
+              onChange={v => setFormData(prev => ({ ...prev, area: v }))}
               required
             />
             <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-600 text-sm flex items-center">

@@ -67,7 +67,11 @@ export function buildFilterGroups(allAreas: string[], categories: AreaCategory[]
   const categorized = new Set<string>();
   const groups: FilterGroup[] = [];
   for (const cat of categories) {
-    const memberAreas = cat.areas.filter(a => allAreas.includes(a));
+    // Iterate allAreas (already sorted by the user's custom drag order) rather than
+    // cat.areas, so dragging an area's order in the admin page also reorders it
+    // within whichever category it belongs to — not just among uncategorized areas.
+    const memberSet = new Set(cat.areas);
+    const memberAreas = allAreas.filter(a => memberSet.has(a));
     // A category with no areas visible to the current viewer (e.g. every restaurant in
     // it is private and not shared with them) would otherwise show an empty, dead-end
     // filter option — skip it entirely instead.
@@ -129,7 +133,10 @@ export function buildCuisineFilterGroups(allCuisines: string[], cuisineCategorie
   const categorized = new Set<string>();
   const groups: FilterGroup[] = [];
   for (const cat of cuisineCategories) {
-    const members = cat.cuisines.filter(c => allCuisines.includes(c));
+    // Same reasoning as buildFilterGroups: use allCuisines' order (custom drag order),
+    // not cat.cuisines' insertion order.
+    const memberSet = new Set(cat.cuisines);
+    const members = allCuisines.filter(c => memberSet.has(c));
     // Same reasoning as buildFilterGroups: hide categories with nothing visible to show.
     if (members.length === 0) continue;
     members.forEach(c => categorized.add(c));
