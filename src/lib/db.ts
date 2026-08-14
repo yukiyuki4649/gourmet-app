@@ -9,6 +9,8 @@ import {
   where,
   orderBy,
   writeBatch,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Restaurant, RestaurantInput, RestaurantHistoryEntry } from '../types/restaurant';
@@ -84,30 +86,60 @@ export async function getDeletedRestaurants(currentUid: string | null, isAdmin: 
   return all.filter(r => r.deleted).sort((a, b) => toMillis(a.geocodedAt) - toMillis(b.geocodedAt));
 }
 
+/**
+ * Keeps "recommended by" links symmetric: if A recommends B, B should recommend A
+ * back too, without the editor having to separately open B and add A themselves.
+ * Diffs old vs new recommendedIds and pushes the corresponding add/remove onto each
+ * affected restaurant's own recommendedIds. Uses arrayUnion/arrayRemove (not a
+ * read-then-write) so concurrent edits from different restaurants can't clobber each
+ * other. Writing to another restaurant's doc is allowed by the same canEdit() rule
+ * that governs normal edits — it doesn't depend on who added or can see that doc.
+ */
+async function syncRecommendationLinks(restaurantId: string, before: string[], after: string[]): Promise<void> {
+  const added = after.filter(targetId => targetId !== restaurantId && !before.includes(targetId));
+  const removed = before.filter(targetId => targetId !== restaurantId && !after.includes(targetId));
+  if (added.length === 0 && removed.length === 0) return;
+
+  const batch = writeBatch(db);
+  for (const targetId of added) {
+    batch.update(doc(db, COLLECTION_NAME, targetId), { recommendedIds: arrayUnion(restaurantId) });
+  }
+  for (const targetId of removed) {
+    batch.update(doc(db, COLLECTION_NAME, targetId), { recommendedIds: arrayRemove(restaurantId) });
+  }
+  await batch.commit();
+}
+
 export async function addRestaurant(data: RestaurantInput & { latitude: number; longitude: number }): Promise<string> {
   const docRef = await addDoc(collection(db, COLLECTION_NAME), {
     ...data,
     geocoded: true,
     geocodedAt: new Date(),
   });
+  if (data.recommendedIds && data.recommendedIds.length > 0) {
+    await syncRecommendationLinks(docRef.id, [], data.recommendedIds);
+  }
   return docRef.id;
 }
 
-/** Snapshots the restaurant's current state into its history subcollection before overwriting it. */
-async function recordHistorySnapshot(id: string, editedBy: string): Promise<void> {
-  const ref = doc(db, COLLECTION_NAME, id);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return;
-  await addDoc(collection(db, COLLECTION_NAME, id, HISTORY_SUBCOLLECTION), {
-    snapshot: snap.data(),
-    editedBy,
-    editedAt: new Date(),
-  });
-}
-
 export async function updateRestaurant(id: string, data: Partial<Restaurant>, editedBy: string): Promise<void> {
-  await recordHistorySnapshot(id, editedBy);
-  await updateDoc(doc(db, COLLECTION_NAME, id), data);
+  const ref = doc(db, COLLECTION_NAME, id);
+  const beforeSnap = await getDoc(ref);
+
+  if (beforeSnap.exists()) {
+    await addDoc(collection(db, COLLECTION_NAME, id, HISTORY_SUBCOLLECTION), {
+      snapshot: beforeSnap.data(),
+      editedBy,
+      editedAt: new Date(),
+    });
+  }
+
+  await updateDoc(ref, data);
+
+  if (data.recommendedIds) {
+    const before = (beforeSnap.data()?.recommendedIds ?? []) as string[];
+    await syncRecommendationLinks(id, before, data.recommendedIds);
+  }
 }
 
 export async function bulkUpdateRestaurants(ids: string[], data: Partial<Restaurant>): Promise<void> {
