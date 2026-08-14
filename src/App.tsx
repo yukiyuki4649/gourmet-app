@@ -460,30 +460,29 @@ export default function App() {
         </div>
 
         <div className="mt-4">
-          <h2 className="text-2xl font-bold mb-4">統計</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-gray-600">総店舗数</p>
-              <p className="text-3xl font-bold">{restaurants.length}</p>
+          <div className="grid grid-cols-4 gap-2 sm:gap-4 bg-white rounded-lg shadow divide-x divide-gray-100">
+            <div className="p-2 sm:p-4 text-center sm:text-left">
+              <p className="text-[11px] sm:text-sm text-gray-500 sm:text-gray-600 whitespace-nowrap">総店舗数</p>
+              <p className="text-lg sm:text-3xl font-bold">{restaurants.length}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-gray-600">A評価</p>
-              <p className="text-3xl font-bold text-green-600">
+            <div className="p-2 sm:p-4 text-center sm:text-left">
+              <p className="text-[11px] sm:text-sm text-gray-500 sm:text-gray-600 whitespace-nowrap">A評価</p>
+              <p className="text-lg sm:text-3xl font-bold text-green-600">
                 {restaurants.filter(r => r.overallRating === 'A').length}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-gray-600">エリア数</p>
-              <p className="text-3xl font-bold">
+            <div className="p-2 sm:p-4 text-center sm:text-left">
+              <p className="text-[11px] sm:text-sm text-gray-500 sm:text-gray-600 whitespace-nowrap">エリア数</p>
+              <p className="text-lg sm:text-3xl font-bold">
                 {new Set(restaurants.map(r => r.area)).size}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-gray-600">料理種別</p>
-              <p className="text-3xl font-bold">
+            <div className="p-2 sm:p-4 text-center sm:text-left">
+              <p className="text-[11px] sm:text-sm text-gray-500 sm:text-gray-600 whitespace-nowrap">料理種別</p>
+              <p className="text-lg sm:text-3xl font-bold">
                 {new Set(restaurants.flatMap(r => r.cuisines)).size}
               </p>
             </div>
