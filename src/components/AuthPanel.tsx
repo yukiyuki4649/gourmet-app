@@ -81,10 +81,11 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
           <h2 className="text-lg font-bold mb-2">登録前の確認</h2>
-          <p className="text-sm text-gray-600 mb-3">
-            登録すると、以下の情報が保存されます。
-          </p>
           <div className="text-sm bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 space-y-2">
+            <p>
+              <span className="font-semibold">ログイン機能の目的:</span>{' '}
+              無関係な人による荒らしや不正な変更を防ぐためのものです。取得した情報を、それ以外の目的で使用することは一切ありません。
+            </p>
             <p>
               <span className="font-semibold">保存される情報:</span> メールアドレス({user.email})、表示名
             </p>
