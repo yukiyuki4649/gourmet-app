@@ -120,9 +120,10 @@ export function Dashboard({
 
     if (sortBy === 'rating') {
       result = [...result].sort((a, b) => {
-        const ratingOrder = { A: 4, B: 3, C: 2, D: 1 };
-        return (ratingOrder[b.overallRating as keyof typeof ratingOrder] || 0) -
-               (ratingOrder[a.overallRating as keyof typeof ratingOrder] || 0);
+        // 未評価(空文字)はAのすぐ下、B以下より上に来るようにする。
+        const ratingOrder = { A: 5, '': 4, B: 3, C: 2, D: 1 };
+        return (ratingOrder[b.overallRating as keyof typeof ratingOrder] ?? 0) -
+               (ratingOrder[a.overallRating as keyof typeof ratingOrder] ?? 0);
       });
     } else if (sortBy === 'area') {
       result = [...result].sort((a, b) => a.area.localeCompare(b.area));
