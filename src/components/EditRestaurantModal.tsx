@@ -6,7 +6,7 @@ import { PhotoField } from './PhotoField';
 import { HistoryPanel } from './HistoryPanel';
 import { RecommendPicker } from './RecommendPicker';
 import { MapCenter } from '../lib/appSettings';
-import { UserProfile } from '../lib/auth';
+import { UsernameEntry } from '../lib/auth';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
 import { isSafeHref } from '../lib/safeUrl';
 
@@ -16,7 +16,7 @@ interface EditRestaurantModalProps {
   onClose: () => void;
   loading: boolean;
   defaultCenter: MapCenter | null;
-  users: UserProfile[];
+  users: UsernameEntry[];
   currentUid: string | null;
   allRestaurants: Restaurant[];
 }

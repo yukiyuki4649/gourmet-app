@@ -22,7 +22,7 @@ import { resolveFilterAreas, resolveFilterCuisines } from './lib/categories';
 import { applyRestaurantFilters, LunchFilter } from './lib/filters';
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from './lib/appSettings';
 import { PersonalSettings, loadPersonalSettings, savePersonalSettings } from './lib/personalSettings';
-import { onAuthChange, getUserProfile, listAllUsers, UserProfile } from './lib/auth';
+import { onAuthChange, getUserProfile, listUsernames, UserProfile, UsernameEntry } from './lib/auth';
 import { auth } from './lib/firebase';
 import './index.css';
 
@@ -102,10 +102,12 @@ export default function App() {
   const isAdmin = profile?.role === 'admin';
   const canManageCategories = isAdmin || profile?.permissions?.manageCategories === true;
 
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  // Name+uid only (no email/role) — safe to fetch for any canEdit user, since it's just
+  // used to populate the "who can see this private restaurant" picker.
+  const [allUsers, setAllUsers] = useState<UsernameEntry[]>([]);
   useEffect(() => {
     if (canEdit) {
-      listAllUsers().then(setAllUsers).catch(() => {});
+      listUsernames().then(setAllUsers).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit]);

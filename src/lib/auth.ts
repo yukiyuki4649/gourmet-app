@@ -29,6 +29,13 @@ export interface UserProfile {
   permissions?: UserPermissions;
 }
 
+/** Name + uid only — no email/role — for pickers (e.g. sharing a private restaurant with
+ * someone) that any canEdit user needs, without exposing the full profile to non-admins. */
+export interface UsernameEntry {
+  uid: string;
+  displayName: string;
+}
+
 const USERS_COLLECTION = 'users';
 // Doc id IS the display name — a lightweight uniqueness index, separate from `users`
 // (which holds emails/roles and is not broadly readable). Firestore's own create-vs-update
@@ -50,6 +57,13 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 export async function isDisplayNameTaken(displayName: string): Promise<boolean> {
   const snap = await getDoc(doc(db, USERNAMES_COLLECTION, displayName));
   return snap.exists();
+}
+
+/** Name + uid for every registered user — safe for any canEdit user, since it carries
+ * no email/role. Backs pickers like "who can see this private restaurant". */
+export async function listUsernames(): Promise<UsernameEntry[]> {
+  const snap = await getDocs(collection(db, USERNAMES_COLLECTION));
+  return snap.docs.map(d => ({ uid: (d.data() as { uid: string }).uid, displayName: d.id }));
 }
 
 export async function signInWithGoogle(): Promise<User> {

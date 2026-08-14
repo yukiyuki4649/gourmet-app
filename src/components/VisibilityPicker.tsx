@@ -1,11 +1,11 @@
 import { Visibility } from '../types/restaurant';
-import { UserProfile } from '../lib/auth';
+import { UsernameEntry } from '../lib/auth';
 
 interface VisibilityPickerProps {
   visibility: Visibility;
   visibleToUids: string[];
   onChange: (visibility: Visibility, visibleToUids: string[]) => void;
-  users: UserProfile[];
+  users: UsernameEntry[];
   currentUid: string | null;
 }
 

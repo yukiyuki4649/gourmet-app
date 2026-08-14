@@ -59,12 +59,14 @@ service cloud.firestore {
     // User profiles / roles. Contains email addresses, so reads are deliberately
     // narrower than "any signed-in user": you can always read your own profile (needed
     // right after signup, before you're approved, to show your pending status), but
-    // reading anyone else's — or listing the whole collection — requires canEdit().
+    // reading anyone else's — or listing the whole collection — is admin-only. Approved
+    // (non-admin) editors never see other users' emails/roles this way; the "who can see
+    // this private restaurant" picker instead reads the email-free `usernames` collection.
     // A new signup may only create its own doc with role "pending" — nobody can
     // self-promote to admin/approved. Only an admin can change someone's role afterwards.
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || canEdit());
-      allow list: if canEdit();
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending';

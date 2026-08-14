@@ -5,7 +5,7 @@ import { LocationPicker } from './LocationPicker';
 import { VisibilityPicker } from './VisibilityPicker';
 import { RecommendPicker } from './RecommendPicker';
 import { MapCenter } from '../lib/appSettings';
-import { UserProfile } from '../lib/auth';
+import { UsernameEntry } from '../lib/auth';
 import { suggestRestaurantPhotos } from '../lib/unsplash';
 import { Restaurant } from '../types/restaurant';
 
@@ -17,7 +17,7 @@ interface AddRestaurantFormProps {
   addedByName: string;
   addedByUid: string;
   defaultCenter: MapCenter | null;
-  users: UserProfile[];
+  users: UsernameEntry[];
   allRestaurants: Restaurant[];
 }
 
