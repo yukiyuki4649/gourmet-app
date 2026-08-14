@@ -1,8 +1,6 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut,
   onAuthStateChanged,
   User,
@@ -68,10 +66,6 @@ export async function listUsernames(): Promise<UsernameEntry[]> {
   return snap.docs.map(d => ({ uid: (d.data() as { uid: string }).uid, displayName: d.id }));
 }
 
-function isMobileDevice(): boolean {
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-}
-
 /**
  * Google actively blocks its OAuth sign-in flow inside embedded "in-app browser"
  * WebViews (LINE, Instagram, Facebook, X/Twitter, etc.) as an anti-phishing measure —
@@ -83,26 +77,17 @@ export function isInAppBrowser(): boolean {
 }
 
 /**
- * Popup-based sign-in (signInWithPopup) is unreliable on mobile browsers — popups get
- * silently blocked or the flow just fails with no useful error — so mobile devices use
- * the redirect flow instead (navigates away to Google and back). On redirect, this
- * returns null immediately since the page is about to unload; the actual result is
- * picked up by completeRedirectSignIn() after the browser comes back.
+ * signInWithRedirect was tried here for mobile devices (to avoid popup-blocking), but
+ * on real iOS Safari it fails outright with "missing initial state" — Safari's storage
+ * partitioning breaks the redirect round-trip through the separate authDomain origin.
+ * signInWithPopup, triggered synchronously from the login button's click handler, works
+ * on mobile Safari/Chrome; the only confirmed mobile failure mode was in-app browsers
+ * (handled separately by isInAppBrowser()), not popups. So: popup for everyone.
  */
-export async function signInWithGoogle(): Promise<User | null> {
+export async function signInWithGoogle(): Promise<User> {
   const provider = new GoogleAuthProvider();
-  if (isMobileDevice()) {
-    await signInWithRedirect(auth, provider);
-    return null;
-  }
   const credential = await signInWithPopup(auth, provider);
   return credential.user;
-}
-
-/** Call once on app load to finish a mobile redirect sign-in (no-op if there wasn't one pending). */
-export async function completeRedirectSignIn(): Promise<User | null> {
-  const result = await getRedirectResult(auth);
-  return result?.user ?? null;
 }
 
 /** Called once, right after a brand-new Google sign-in, to create the user's app profile. */
