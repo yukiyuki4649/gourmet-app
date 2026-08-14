@@ -90,7 +90,7 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
               <span className="font-semibold">保存される情報:</span> メールアドレス({user.email})、表示名
             </p>
             <ul className="list-disc list-inside space-y-1 text-gray-700">
-              <li>管理者(サイト運営者)は、あなたのメールアドレス・表示名・権限をすべて確認できます。</li>
+              <li>管理者(サイト運営者)は、あなたのメールアドレス・表示名・当サイト内での権限の三つの情報が確認できます。</li>
               <li>承認された他の利用者には、表示名のみが見えます(店舗の「追加者」表示など)。メールアドレスは見えません。</li>
               <li>ログインしていない訪問者には、あなたの情報は一切表示されません。</li>
             </ul>
