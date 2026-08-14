@@ -23,6 +23,7 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [agreed, setAgreed] = useState(false);
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -72,15 +73,28 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
     );
   }
 
-  // Signed in with Google for the first time — no app profile yet, ask for a display name.
+  // Signed in with Google for the first time — no app profile yet. Show what
+  // information will be stored and who can see it, and require explicit
+  // agreement before creating the profile (registration).
   if (user && !profile) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-          <h2 className="text-lg font-bold mb-2">表示名を設定してください</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            一覧の「追加者」として使われる名前です。他の人と同じ名前は使えません。
+          <h2 className="text-lg font-bold mb-2">登録前の確認</h2>
+          <p className="text-sm text-gray-600 mb-3">
+            登録すると、以下の情報が保存されます。
           </p>
+          <div className="text-sm bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 space-y-2">
+            <p>
+              <span className="font-semibold">保存される情報:</span> メールアドレス({user.email})、表示名
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-gray-700">
+              <li>管理者(サイト運営者)は、あなたのメールアドレス・表示名・権限をすべて確認できます。</li>
+              <li>承認された他の利用者には、表示名のみが見えます(店舗の「追加者」表示など)。メールアドレスは見えません。</li>
+              <li>ログインしていない訪問者には、あなたの情報は一切表示されません。</li>
+            </ul>
+          </div>
+
           <form onSubmit={handleCreateProfile} className="space-y-3">
             <input
               type="text"
@@ -90,10 +104,22 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               required
             />
+            <p className="text-xs text-gray-500">
+              一覧の「追加者」として使われる名前です。他の人と同じ名前は使えません。
+            </p>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={e => setAgreed(e.target.checked)}
+                className="mt-0.5"
+              />
+              上記の内容を理解し、同意します
+            </label>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !agreed}
               className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
               {loading ? '処理中...' : 'はじめる'}
