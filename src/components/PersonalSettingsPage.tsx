@@ -11,7 +11,7 @@ const containerStyle = {
   height: '500px',
 };
 
-const FALLBACK_CENTER: MapCenter = { lat: 35.6762, lng: 139.6503 };
+const FALLBACK_CENTER: MapCenter = { lat: 35.7141, lng: 139.7774 }; // 上野
 
 interface PersonalSettingsPageProps {
   restaurants: Restaurant[];

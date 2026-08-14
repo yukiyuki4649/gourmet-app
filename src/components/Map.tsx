@@ -9,6 +9,8 @@ const containerStyle = {
   height: '100%',
 };
 
+const UENO_CENTER: MapCenter = { lat: 35.7141, lng: 139.7774 };
+
 interface MapProps {
   restaurants: Restaurant[];
   selectedId?: string | null;
@@ -27,11 +29,12 @@ export function Map({ restaurants, selectedId, onSelectRestaurant, isFiltered, d
   });
 
   const center = useMemo(() => {
+    // Ueno is the default for first-time visitors who haven't set a personal
+    // default center yet (src/lib/personalSettings.ts's defaultCenter is null
+    // until they pick one on the settings page).
     if (defaultCenter) return defaultCenter;
-    return restaurants.length > 0
-      ? { lat: restaurants[0].latitude, lng: restaurants[0].longitude }
-      : { lat: 35.6762, lng: 139.6503 };
-  }, [restaurants, defaultCenter]);
+    return UENO_CENTER;
+  }, [defaultCenter]);
 
   useEffect(() => {
     if (!selectedId) return;
