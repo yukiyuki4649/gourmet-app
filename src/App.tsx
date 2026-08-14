@@ -369,13 +369,16 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">🍽️ 勝手にグルメマップ</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-3xl font-bold text-gray-900 whitespace-nowrap">🍽️ 勝手にグルメマップ</h1>
             <p className="text-xs text-gray-500 mt-2">
               管理者を含む、お酒好きな数人が勝手に評価しているグルメメモです。味の好みは人それぞれなので、あくまで参考程度にご覧ください。
             </p>
           </div>
-          <a href="#/settings" className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap shrink-0">
+          <a
+            href="#/settings"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap shrink-0"
+          >
             ⚙️ 設定
           </a>
         </div>
@@ -424,6 +427,8 @@ export default function App() {
             loading={isAdding}
             cuisineOptions={cuisineOptions}
             areaOptions={areaOptions}
+            categories={appSettings.categories}
+            cuisineCategories={appSettings.cuisineCategories}
             addedByName={profile?.displayName ?? ''}
             addedByUid={authUser?.uid ?? ''}
             defaultCenter={personalSettings.defaultCenter}
@@ -491,6 +496,8 @@ export default function App() {
           allRestaurants={restaurants}
           cuisineOptions={cuisineOptions}
           areaOptions={areaOptions}
+          categories={appSettings.categories}
+          cuisineCategories={appSettings.cuisineCategories}
         />
       )}
     </div>

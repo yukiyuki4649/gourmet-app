@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { OptionGroup } from '../lib/categories';
 
 const NEW_OPTION = '__new__';
 
@@ -7,11 +8,15 @@ interface ComboSelectProps {
   placeholder: string;
   value: string;
   options: string[];
+  // When provided, options are shown under <optgroup> category headers instead of a
+  // flat list (e.g. cuisines grouped under "麺類"/"肉料理"/...). `options` above is
+  // still used as the flat validity check ("is the current value a known option").
+  groups?: OptionGroup[];
   onChange: (value: string) => void;
   required?: boolean;
 }
 
-export function ComboSelect({ name, placeholder, value, options, onChange, required }: ComboSelectProps) {
+export function ComboSelect({ name, placeholder, value, options, groups, onChange, required }: ComboSelectProps) {
   const [mode, setMode] = useState<'select' | 'new'>(
     value && !options.includes(value) ? 'new' : 'select',
   );
@@ -62,11 +67,21 @@ export function ComboSelect({ name, placeholder, value, options, onChange, requi
       <option value="" disabled>
         {placeholder}を選択
       </option>
-      {options.map(opt => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
+      {groups && groups.length > 0
+        ? groups.map(group => (
+            <optgroup key={group.label || '__uncategorized__'} label={group.label || placeholder}>
+              {group.options.map(opt => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </optgroup>
+          ))
+        : options.map(opt => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
       <option value={NEW_OPTION}>+ 新規作成...</option>
     </select>
   );

@@ -159,3 +159,47 @@ export function buildCuisineFilterGroups(allCuisines: string[], cuisineCategorie
 
   return groups;
 }
+
+export interface OptionGroup {
+  label: string;
+  options: string[];
+}
+
+/**
+ * Groups plain option values (not filter values) by category, for single-value pickers
+ * like the cuisine/area <select> in the add/edit restaurant forms — unlike
+ * buildFilterGroups/buildCuisineFilterGroups, there's no "(すべて)" pseudo-option since
+ * a restaurant needs exactly one concrete area/cuisine, not a category-wide filter.
+ */
+function groupByCategory(items: string[], categoryDefs: { name: string; members: string[] }[]): OptionGroup[] {
+  const categorized = new Set<string>();
+  const groups: OptionGroup[] = [];
+  for (const cat of categoryDefs) {
+    const memberSet = new Set(cat.members);
+    const members = items.filter(i => memberSet.has(i));
+    if (members.length === 0) continue;
+    members.forEach(m => categorized.add(m));
+    groups.push({ label: cat.name, options: members });
+  }
+
+  const uncategorized = items.filter(i => !categorized.has(i));
+  if (uncategorized.length > 0) {
+    groups.push({ label: categoryDefs.length > 0 ? 'その他' : '', options: uncategorized });
+  }
+
+  return groups;
+}
+
+export function groupAreasByCategory(areas: string[], categories: AreaCategory[]): OptionGroup[] {
+  return groupByCategory(
+    areas,
+    categories.map(c => ({ name: c.name, members: c.areas })),
+  );
+}
+
+export function groupCuisinesByCategory(cuisines: string[], cuisineCategories: CuisineCategory[]): OptionGroup[] {
+  return groupByCategory(
+    cuisines,
+    cuisineCategories.map(c => ({ name: c.name, members: c.cuisines })),
+  );
+}

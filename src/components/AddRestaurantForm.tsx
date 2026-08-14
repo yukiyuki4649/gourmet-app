@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PhotoInfo, RestaurantInput, Visibility } from '../types/restaurant';
 import { ComboSelect } from './ComboSelect';
 import { LocationPicker } from './LocationPicker';
 import { VisibilityPicker } from './VisibilityPicker';
 import { RecommendPicker } from './RecommendPicker';
+import { AreaCategory, CuisineCategory, groupAreasByCategory, groupCuisinesByCategory } from '../lib/categories';
 import { MapCenter } from '../lib/appSettings';
 import { UsernameEntry } from '../lib/auth';
 import { suggestRestaurantPhotos } from '../lib/unsplash';
@@ -14,6 +15,8 @@ interface AddRestaurantFormProps {
   loading: boolean;
   cuisineOptions: string[];
   areaOptions: string[];
+  categories: AreaCategory[];
+  cuisineCategories: CuisineCategory[];
   addedByName: string;
   addedByUid: string;
   defaultCenter: MapCenter | null;
@@ -48,6 +51,8 @@ export function AddRestaurantForm({
   loading,
   cuisineOptions,
   areaOptions,
+  categories,
+  cuisineCategories,
   addedByName,
   addedByUid,
   defaultCenter,
@@ -56,6 +61,12 @@ export function AddRestaurantForm({
 }: AddRestaurantFormProps) {
   const [formData, setFormData] = useState(() => makeInitialFormData(addedByName, addedByUid));
   const [fetchingPhotos, setFetchingPhotos] = useState(false);
+
+  const areaGroups = useMemo(() => groupAreasByCategory(areaOptions, categories), [areaOptions, categories]);
+  const cuisineGroups = useMemo(
+    () => groupCuisinesByCategory(cuisineOptions, cuisineCategories),
+    [cuisineOptions, cuisineCategories],
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -100,6 +111,7 @@ export function AddRestaurantForm({
           placeholder="料理種別"
           value={formData.cuisine}
           options={cuisineOptions}
+          groups={cuisineGroups}
           onChange={v => setFormData(prev => ({ ...prev, cuisine: v }))}
           required
         />
@@ -108,6 +120,7 @@ export function AddRestaurantForm({
           placeholder="エリア"
           value={formData.area}
           options={areaOptions}
+          groups={areaGroups}
           onChange={v => setFormData(prev => ({ ...prev, area: v }))}
           required
         />
