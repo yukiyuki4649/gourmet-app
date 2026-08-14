@@ -122,7 +122,7 @@ export function AdminSettingsPage({
   const handleDeleteCuisine = (oldName: string) => {
     const target = cuisineMergeTargets[oldName];
     if (!target) return;
-    const count = restaurants.filter(r => r.cuisine === oldName).length;
+    const count = restaurants.filter(r => r.cuisines.includes(oldName)).length;
     if (!window.confirm(`「${oldName}」(${count}件の店舗)を削除し、「${target}」に統合します。よろしいですか?`)) return;
     performRenameCuisine(oldName, target);
     setCuisineMergeTargets(prev => {
@@ -206,7 +206,7 @@ export function AdminSettingsPage({
 
   // --- cuisine categories (draft) ---
   const allCuisines = useMemo(
-    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.cuisine))), draft.cuisineOrder),
+    () => sortByOrder(Array.from(new Set(restaurants.flatMap(r => r.cuisines))), draft.cuisineOrder),
     [restaurants, draft.cuisineOrder],
   );
 
@@ -776,7 +776,7 @@ export function AdminSettingsPage({
                     <div className="text-sm">
                       <span className="font-medium">{r.name}</span>
                       <span className="text-gray-500 ml-2">
-                        {r.area} / {r.cuisine} / 追加者: {r.addedBy || '不明'}
+                        {r.area} / {r.cuisines.join('、')} / 追加者: {r.addedBy || '不明'}
                       </span>
                     </div>
                     <button

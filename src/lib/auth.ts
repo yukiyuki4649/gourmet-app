@@ -1,6 +1,8 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   User,
@@ -66,10 +68,31 @@ export async function listUsernames(): Promise<UsernameEntry[]> {
   return snap.docs.map(d => ({ uid: (d.data() as { uid: string }).uid, displayName: d.id }));
 }
 
-export async function signInWithGoogle(): Promise<User> {
+function isMobileDevice(): boolean {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+/**
+ * Popup-based sign-in (signInWithPopup) is unreliable on mobile browsers — popups get
+ * silently blocked or the flow just fails with no useful error — so mobile devices use
+ * the redirect flow instead (navigates away to Google and back). On redirect, this
+ * returns null immediately since the page is about to unload; the actual result is
+ * picked up by completeRedirectSignIn() after the browser comes back.
+ */
+export async function signInWithGoogle(): Promise<User | null> {
   const provider = new GoogleAuthProvider();
+  if (isMobileDevice()) {
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
   const credential = await signInWithPopup(auth, provider);
   return credential.user;
+}
+
+/** Call once on app load to finish a mobile redirect sign-in (no-op if there wasn't one pending). */
+export async function completeRedirectSignIn(): Promise<User | null> {
+  const result = await getRedirectResult(auth);
+  return result?.user ?? null;
 }
 
 /** Called once, right after a brand-new Google sign-in, to create the user's app profile. */

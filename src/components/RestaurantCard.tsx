@@ -81,7 +81,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
                     </span>
                   )}
                 </h3>
-                <p className="text-sm text-gray-600">{restaurant.cuisine}</p>
+                <p className="text-sm text-gray-600">{restaurant.cuisines.join('、')}</p>
               </div>
             </div>
 

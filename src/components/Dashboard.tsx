@@ -77,7 +77,7 @@ export function Dashboard({
   }, [restaurants, areaOrder]);
 
   const cuisines = useMemo(() => {
-    const unique = Array.from(new Set(restaurants.map(r => r.cuisine)));
+    const unique = Array.from(new Set(restaurants.flatMap(r => r.cuisines)));
     return sortByOrder(unique, cuisineOrder);
   }, [restaurants, cuisineOrder]);
 
@@ -127,7 +127,7 @@ export function Dashboard({
     } else if (sortBy === 'area') {
       result = [...result].sort((a, b) => a.area.localeCompare(b.area));
     } else if (sortBy === 'cuisine') {
-      result = [...result].sort((a, b) => a.cuisine.localeCompare(b.cuisine));
+      result = [...result].sort((a, b) => a.cuisines.join('、').localeCompare(b.cuisines.join('、')));
     }
 
     return result;

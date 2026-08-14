@@ -28,6 +28,22 @@ function toMillis(value: unknown): number {
 }
 
 /**
+ * Cuisine used to be a single string field. Docs written before the switch to multiple
+ * cuisines still have `cuisine: string` instead of `cuisines: string[]` in Firestore —
+ * rather than running a migration script, older docs are normalized to the new shape
+ * right here at read time. New writes always save `cuisines`, so this only matters for
+ * documents nobody has edited since the change.
+ */
+function normalizeRestaurant(id: string, data: Record<string, unknown>): Restaurant {
+  const cuisines = Array.isArray(data.cuisines)
+    ? (data.cuisines as string[])
+    : typeof data.cuisine === 'string' && data.cuisine
+      ? [data.cuisine]
+      : [];
+  return { id, ...data, cuisines } as Restaurant;
+}
+
+/**
  * Firestore security rules can only allow a broad "list" query when the query's own
  * where-clauses provably satisfy the rule for every possible match — an unfiltered
  * query can't be checked that way and is rejected outright. So instead of one query
@@ -68,7 +84,7 @@ async function fetchVisibleRestaurants(currentUid: string | null, isAdmin: boole
   const merged = new Map<string, Restaurant>();
   for (const snapshot of snapshots) {
     for (const docSnap of snapshot.docs) {
-      merged.set(docSnap.id, { id: docSnap.id, ...docSnap.data() } as Restaurant);
+      merged.set(docSnap.id, normalizeRestaurant(docSnap.id, docSnap.data()));
     }
   }
 
@@ -145,6 +161,22 @@ export async function updateRestaurant(id: string, data: Partial<Restaurant>, ed
 export async function bulkUpdateRestaurants(ids: string[], data: Partial<Restaurant>): Promise<void> {
   const batch = writeBatch(db);
   for (const id of ids) {
+    batch.update(doc(db, COLLECTION_NAME, id), data);
+  }
+  await batch.commit();
+}
+
+/**
+ * Like bulkUpdateRestaurants, but each restaurant gets its own patch instead of one
+ * shared patch — needed for renaming a cuisine name, since each restaurant's `cuisines`
+ * array is different and has to be edited individually (replace-in-place), not
+ * overwritten with the same value.
+ */
+export async function bulkUpdateRestaurantsIndividually(
+  updates: Array<{ id: string; data: Partial<Restaurant> }>,
+): Promise<void> {
+  const batch = writeBatch(db);
+  for (const { id, data } of updates) {
     batch.update(doc(db, COLLECTION_NAME, id), data);
   }
   await batch.commit();

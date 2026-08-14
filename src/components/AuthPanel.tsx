@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { UserProfile, signInWithGoogle, createProfile, logout } from '../lib/auth';
+import { UserProfile, signInWithGoogle, completeRedirectSignIn, createProfile, logout } from '../lib/auth';
 
 interface AuthPanelProps {
   user: User | null;
@@ -25,12 +25,31 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
   const [displayName, setDisplayName] = useState('');
   const [agreed, setAgreed] = useState(false);
 
+  // Finishes a mobile redirect sign-in (signInWithGoogle navigates away and back on
+  // mobile instead of using a popup) — a no-op if there wasn't one pending.
+  useEffect(() => {
+    completeRedirectSignIn()
+      .then(() => onProfileChange())
+      .catch(err => setError(err instanceof Error ? err.message : 'ログインに失敗しました'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Prefills the display-name field with the Google account's name once we have a
+  // signed-in user with no app profile yet — covers both the popup flow (user is
+  // known immediately) and the mobile redirect flow (user only appears once
+  // onAuthStateChanged fires after the redirect completes).
+  useEffect(() => {
+    if (user && !profile && !displayName) {
+      setDisplayName(user.displayName ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile]);
+
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
     try {
-      const loggedInUser = await signInWithGoogle();
-      setDisplayName(loggedInUser.displayName ?? '');
+      await signInWithGoogle();
       await onProfileChange();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ログインに失敗しました');

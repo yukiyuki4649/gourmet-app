@@ -18,6 +18,7 @@ import {
   restoreRestaurant,
   updateRestaurant,
   bulkUpdateRestaurants,
+  bulkUpdateRestaurantsIndividually,
 } from './lib/db';
 import { resolveFilterAreas, resolveFilterCuisines, sortByOrder } from './lib/categories';
 import { applyRestaurantFilters, LunchFilter } from './lib/filters';
@@ -183,7 +184,7 @@ export default function App() {
     lunchFilter !== '';
 
   const cuisineOptions = useMemo(
-    () => sortByOrder(Array.from(new Set(restaurants.map(r => r.cuisine))), appSettings.cuisineOrder),
+    () => sortByOrder(Array.from(new Set(restaurants.flatMap(r => r.cuisines))), appSettings.cuisineOrder),
     [restaurants, appSettings.cuisineOrder],
   );
   const areaOptions = useMemo(
@@ -296,9 +297,17 @@ export default function App() {
   };
 
   const handleRenameCuisine = async (oldName: string, newName: string) => {
-    const ids = restaurants.filter(r => r.cuisine === oldName).map(r => r.id);
-    if (ids.length > 0) {
-      await bulkUpdateRestaurants(ids, { cuisine: newName });
+    // Each restaurant's `cuisines` array is different, so unlike area (a single value,
+    // safe to overwrite with one shared patch) this needs a per-restaurant patch: replace
+    // oldName in place within that restaurant's own array, deduping in case newName was
+    // already present too (merging into an existing name).
+    const affected = restaurants.filter(r => r.cuisines.includes(oldName));
+    if (affected.length > 0) {
+      const updates = affected.map(r => ({
+        id: r.id,
+        data: { cuisines: Array.from(new Set(r.cuisines.map(c => (c === oldName ? newName : c)))) },
+      }));
+      await bulkUpdateRestaurantsIndividually(updates);
     }
     if (canManageCategories) {
       const nextCuisineCategories = appSettings.cuisineCategories.map(c => ({
@@ -475,7 +484,7 @@ export default function App() {
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-gray-600">料理種別</p>
               <p className="text-3xl font-bold">
-                {new Set(restaurants.map(r => r.cuisine)).size}
+                {new Set(restaurants.flatMap(r => r.cuisines)).size}
               </p>
             </div>
           </div>

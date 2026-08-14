@@ -9,7 +9,7 @@ export interface PhotoInfo {
 export interface Restaurant {
   id: string;
   name: string;
-  cuisine: string;
+  cuisines: string[];
   area: string;
   overallRating: string;
   tasteRating: string;
@@ -40,7 +40,7 @@ export interface RestaurantHistoryEntry {
 
 export interface RestaurantInput {
   name: string;
-  cuisine: string;
+  cuisines: string[];
   area: string;
   overallRating: string;
   tasteRating: string;

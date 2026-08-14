@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PhotoInfo, Restaurant, Visibility } from '../types/restaurant';
 import { ComboSelect } from './ComboSelect';
+import { CuisineMultiSelect } from './CuisineMultiSelect';
 import { LocationPicker } from './LocationPicker';
 import { VisibilityPicker } from './VisibilityPicker';
 import { PhotoField } from './PhotoField';
@@ -48,7 +49,7 @@ export function EditRestaurantModal({
   );
   const [formData, setFormData] = useState({
     name: restaurant.name,
-    cuisine: restaurant.cuisine,
+    cuisines: restaurant.cuisines ?? [],
     area: restaurant.area,
     overallRating: restaurant.overallRating,
     tasteRating: restaurant.tasteRating,
@@ -72,7 +73,7 @@ export function EditRestaurantModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.cuisine || !formData.area) {
+    if (!formData.name || formData.cuisines.length === 0 || !formData.area) {
       alert('店名、料理、エリアは必須項目です');
       return;
     }
@@ -99,7 +100,7 @@ export function EditRestaurantModal({
             onRevert={snapshot =>
               setFormData(prev => ({
                 name: snapshot.name ?? prev.name,
-                cuisine: snapshot.cuisine ?? prev.cuisine,
+                cuisines: snapshot.cuisines ?? prev.cuisines,
                 area: snapshot.area ?? prev.area,
                 overallRating: snapshot.overallRating ?? prev.overallRating,
                 tasteRating: snapshot.tasteRating ?? prev.tasteRating,
@@ -128,15 +129,6 @@ export function EditRestaurantModal({
               value={formData.name}
               onChange={handleChange}
               className="px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-            <ComboSelect
-              name="cuisine"
-              placeholder="料理種別"
-              value={formData.cuisine}
-              options={cuisineOptions}
-              groups={cuisineGroups}
-              onChange={v => setFormData(prev => ({ ...prev, cuisine: v }))}
               required
             />
             <ComboSelect
@@ -189,6 +181,14 @@ export function EditRestaurantModal({
                 <option value="D">コスパ: D</option>
               </select>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <CuisineMultiSelect
+              groups={cuisineGroups}
+              selected={formData.cuisines}
+              onChange={cuisines => setFormData(prev => ({ ...prev, cuisines }))}
+            />
           </div>
 
           <label className="flex items-center gap-2 text-sm mb-4">

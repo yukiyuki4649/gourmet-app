@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PhotoInfo, RestaurantInput, Visibility } from '../types/restaurant';
 import { ComboSelect } from './ComboSelect';
+import { CuisineMultiSelect } from './CuisineMultiSelect';
 import { LocationPicker } from './LocationPicker';
 import { VisibilityPicker } from './VisibilityPicker';
 import { RecommendPicker } from './RecommendPicker';
@@ -27,7 +28,7 @@ interface AddRestaurantFormProps {
 function makeInitialFormData(addedByName: string, addedByUid: string) {
   return {
     name: '',
-    cuisine: '',
+    cuisines: [] as string[],
     area: '',
     overallRating: 'B',
     tasteRating: 'B',
@@ -75,13 +76,13 @@ export function AddRestaurantForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.cuisine || !formData.area) {
+    if (!formData.name || formData.cuisines.length === 0 || !formData.area) {
       alert('店名、料理、エリアは必須項目です');
       return;
     }
 
     setFetchingPhotos(true);
-    const { exteriorPhoto, dishPhoto } = await suggestRestaurantPhotos(formData.cuisine).catch(() => ({
+    const { exteriorPhoto, dishPhoto } = await suggestRestaurantPhotos(formData.cuisines[0] ?? '').catch(() => ({
       exteriorPhoto: null,
       dishPhoto: null,
     }));
@@ -104,15 +105,6 @@ export function AddRestaurantForm({
           value={formData.name}
           onChange={handleChange}
           className="px-3 py-2 border border-gray-300 rounded-md"
-          required
-        />
-        <ComboSelect
-          name="cuisine"
-          placeholder="料理種別"
-          value={formData.cuisine}
-          options={cuisineOptions}
-          groups={cuisineGroups}
-          onChange={v => setFormData(prev => ({ ...prev, cuisine: v }))}
           required
         />
         <ComboSelect
@@ -162,6 +154,14 @@ export function AddRestaurantForm({
             <option value="D">コスパ: D</option>
           </select>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <CuisineMultiSelect
+          groups={cuisineGroups}
+          selected={formData.cuisines}
+          onChange={cuisines => setFormData(prev => ({ ...prev, cuisines }))}
+        />
       </div>
 
       <label className="flex items-center gap-2 text-sm mb-4">

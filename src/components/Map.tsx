@@ -88,7 +88,7 @@ export function Map({ restaurants, selectedId, onSelectRestaurant, isFiltered, d
           >
             <div className="p-2">
               <h3 className="font-bold">{selectedMarker.name}</h3>
-              <p className="text-sm text-gray-600">{selectedMarker.cuisine}</p>
+              <p className="text-sm text-gray-600">{selectedMarker.cuisines.join('、')}</p>
               <p className="text-sm text-gray-600">総合評価: {selectedMarker.overallRating}</p>
               {selectedMarker.notes && <p className="text-sm mt-1">{selectedMarker.notes}</p>}
             </div>

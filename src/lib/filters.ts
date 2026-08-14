@@ -18,7 +18,7 @@ export function applyRestaurantFilters(restaurants: Restaurant[], filters: Resta
   }
   if (filters.effectiveCuisines) {
     const cuisines = filters.effectiveCuisines;
-    result = result.filter(r => cuisines.includes(r.cuisine));
+    result = result.filter(r => r.cuisines.some(c => cuisines.includes(c)));
   }
   if (filters.person) {
     result = result.filter(r => r.addedBy === filters.person);
