@@ -1,15 +1,19 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  reauthenticateWithPopup,
+  deleteUser,
   signOut,
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 import {
   doc,
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   getDocs,
 } from 'firebase/firestore';
@@ -114,6 +118,40 @@ export async function createProfile(uid: string, email: string, displayName: str
 
 export async function logout(): Promise<void> {
   await signOut(auth);
+}
+
+/**
+ * Account withdrawal — deletes the current user's Firestore profile, frees up their
+ * display name for reuse, then deletes the Firebase Auth account itself (this also
+ * signs them out). Restaurants they added are left untouched (addedByUid becomes a
+ * dangling reference, same as any other Firestore doc with no referential integrity —
+ * addedBy's display-name string still shows correctly either way).
+ *
+ * Firestore docs are deleted first, while still authenticated, so a failure here
+ * leaves the account intact rather than orphaning the profile. deleteUser() can fail
+ * with auth/requires-recent-login if the session is old; in that case we
+ * re-authenticate via a fresh Google popup and retry once.
+ */
+export async function deleteMyAccount(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('ログインしていません');
+
+  const profile = await getUserProfile(user.uid);
+  if (profile?.displayName) {
+    await deleteDoc(doc(db, USERNAMES_COLLECTION, profile.displayName));
+  }
+  await deleteDoc(doc(db, USERS_COLLECTION, user.uid));
+
+  try {
+    await deleteUser(user);
+  } catch (error) {
+    if (error instanceof FirebaseError && error.code === 'auth/requires-recent-login') {
+      await reauthenticateWithPopup(user, new GoogleAuthProvider());
+      await deleteUser(user);
+    } else {
+      throw error;
+    }
+  }
 }
 
 export async function listAllUsers(): Promise<UserProfile[]> {

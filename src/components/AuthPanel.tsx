@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { UserProfile, signInWithGoogle, createProfile, logout, isInAppBrowser } from '../lib/auth';
+import { UserProfile, signInWithGoogle, createProfile, logout, deleteMyAccount, isInAppBrowser } from '../lib/auth';
 
 interface AuthPanelProps {
   user: User | null;
@@ -24,6 +24,7 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
   const [error, setError] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [agreed, setAgreed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Prefills the display-name field with the Google account's name once we have a
   // signed-in user with no app profile yet.
@@ -47,6 +48,24 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (
+      !window.confirm(
+        '退会すると、アカウント情報が削除され、二度と元に戻せません。店舗の追加・編集ができなくなります(再度ログインすれば承認待ちから再登録できます)。本当に退会しますか?',
+      )
+    ) {
+      return;
+    }
+    setError('');
+    setDeleting(true);
+    try {
+      await deleteMyAccount();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '退会処理に失敗しました');
+      setDeleting(false);
+    }
+  };
+
   const handleCreateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -65,18 +84,30 @@ export function AuthPanel({ user, profile, onProfileChange }: AuthPanelProps) {
   // Logged in and has a profile already.
   if (user && profile) {
     return (
-      <div className="flex items-center gap-3 text-sm">
-        <span>
-          {profile.displayName}
-          {profile.role === 'pending' && <span className="ml-1 text-orange-600">(承認待ち)</span>}
-          {profile.role === 'admin' && <span className="ml-1 text-purple-600">(管理者)</span>}
-        </span>
-        <button
-          onClick={() => logout()}
-          className="px-3 py-1.5 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap"
-        >
-          ログアウト
-        </button>
+      <div className="flex flex-col items-end gap-1 text-sm">
+        <div className="flex items-center gap-3">
+          <span>
+            {profile.displayName}
+            {profile.role === 'pending' && <span className="ml-1 text-orange-600">(承認待ち)</span>}
+            {profile.role === 'admin' && <span className="ml-1 text-purple-600">(管理者)</span>}
+          </span>
+          <button
+            onClick={() => logout()}
+            className="px-3 py-1.5 bg-gray-200 rounded-md hover:bg-gray-300 whitespace-nowrap"
+          >
+            ログアウト
+          </button>
+        </div>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        {profile.role !== 'admin' && (
+          <button
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            className="text-xs text-gray-400 hover:text-red-600 hover:underline disabled:opacity-50"
+          >
+            {deleting ? '退会処理中...' : '退会する'}
+          </button>
+        )}
       </div>
     );
   }

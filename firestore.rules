@@ -70,7 +70,10 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending';
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin();
+      // Anyone can delete their own profile (account withdrawal); an admin can
+      // delete anyone's.
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
 
     // Display-name uniqueness index — doc id is the name itself, holding only the
@@ -81,7 +84,9 @@ service cloud.firestore {
     match /usernames/{name} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      // Freed up on account withdrawal so the name can be reclaimed by someone else.
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
   }
 }
