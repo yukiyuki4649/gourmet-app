@@ -1,7 +1,8 @@
-import { forwardRef, useMemo } from 'react';
-import { Restaurant } from '../types/restaurant';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { Restaurant, RestaurantPhotos } from '../types/restaurant';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
 import { isSafeHref } from '../lib/safeUrl';
+import { fetchRestaurantPhotos } from '../lib/db';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -45,6 +46,25 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
         .map(id => allRestaurants.find(r => r.id === id))
         .filter((r): r is Restaurant => !!r);
     }, [isSelected, allRestaurants, restaurant.recommendedIds]);
+
+    const [photos, setPhotos] = useState<RestaurantPhotos | null>(null);
+    const [photosLoading, setPhotosLoading] = useState(false);
+
+    useEffect(() => {
+      if (!isSelected || !restaurant.hasPhotos || photos) return;
+      let cancelled = false;
+      setPhotosLoading(true);
+      fetchRestaurantPhotos(restaurant.id)
+        .then(result => {
+          if (!cancelled) setPhotos(result);
+        })
+        .finally(() => {
+          if (!cancelled) setPhotosLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [isSelected, restaurant.hasPhotos, restaurant.id, photos]);
 
     return (
       <div
@@ -110,19 +130,24 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
             </a>
           </div>
 
-          {(restaurant.exteriorPhoto || restaurant.dishPhoto) && (
+          {isSelected && restaurant.hasPhotos && (
             <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
-              {restaurant.exteriorPhoto && (
+              {photosLoading && !photos && (
+                <div className="w-full h-40 sm:w-36 sm:h-32 md:w-44 md:h-36 flex items-center justify-center bg-gray-50 rounded-md border border-gray-100 text-xs text-gray-400">
+                  写真を読み込み中...
+                </div>
+              )}
+              {photos?.exteriorPhoto && (
                 <img
-                  src={restaurant.exteriorPhoto.url}
+                  src={photos.exteriorPhoto.url}
                   alt="外観"
                   onError={e => (e.currentTarget.style.display = 'none')}
                   className="w-full h-40 sm:w-36 sm:h-32 md:w-44 md:h-36 object-contain bg-gray-50 rounded-md border border-gray-100"
                 />
               )}
-              {restaurant.dishPhoto && (
+              {photos?.dishPhoto && (
                 <img
-                  src={restaurant.dishPhoto.url}
+                  src={photos.dishPhoto.url}
                   alt="料理"
                   onError={e => (e.currentTarget.style.display = 'none')}
                   className="w-full h-40 sm:w-36 sm:h-32 md:w-44 md:h-36 object-contain bg-gray-50 rounded-md border border-gray-100"

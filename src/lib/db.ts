@@ -2,6 +2,7 @@ import {
   collection,
   addDoc,
   updateDoc,
+  setDoc,
   doc,
   getDoc,
   getDocs,
@@ -13,11 +14,24 @@ import {
   arrayRemove,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Restaurant, RestaurantInput, RestaurantHistoryEntry } from '../types/restaurant';
+import { Restaurant, RestaurantInput, RestaurantHistoryEntry, RestaurantPhotos, RestaurantUpdate } from '../types/restaurant';
 import { VisibilityGroup } from './appSettings';
 
 const COLLECTION_NAME = 'restaurants';
 const HISTORY_SUBCOLLECTION = 'history';
+const PHOTOS_SUBCOLLECTION = 'photos';
+const PHOTOS_DOC_ID = 'main';
+
+/** Fetches a restaurant's photos on demand — never embedded in the restaurant doc itself, since a
+ *  Base64 photo can be hundreds of KB and every list load would otherwise pay for all of them. */
+export async function fetchRestaurantPhotos(id: string): Promise<RestaurantPhotos> {
+  const snap = await getDoc(doc(db, COLLECTION_NAME, id, PHOTOS_SUBCOLLECTION, PHOTOS_DOC_ID));
+  const data = snap.data();
+  return {
+    exteriorPhoto: (data?.exteriorPhoto as RestaurantPhotos['exteriorPhoto']) ?? null,
+    dishPhoto: (data?.dishPhoto as RestaurantPhotos['dishPhoto']) ?? null,
+  };
+}
 
 function toMillis(value: unknown): number {
   if (!value) return 0;
@@ -128,18 +142,29 @@ async function syncRecommendationLinks(restaurantId: string, before: string[], a
 }
 
 export async function addRestaurant(data: RestaurantInput & { latitude: number; longitude: number }): Promise<string> {
+  const { exteriorPhoto, dishPhoto, ...rest } = data;
+  const hasPhotos = !!(exteriorPhoto || dishPhoto);
+
   const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-    ...data,
+    ...rest,
+    hasPhotos,
     geocoded: true,
     geocodedAt: new Date(),
   });
+
+  if (hasPhotos) {
+    await setDoc(doc(db, COLLECTION_NAME, docRef.id, PHOTOS_SUBCOLLECTION, PHOTOS_DOC_ID), {
+      exteriorPhoto: exteriorPhoto ?? null,
+      dishPhoto: dishPhoto ?? null,
+    });
+  }
   if (data.recommendedIds && data.recommendedIds.length > 0) {
     await syncRecommendationLinks(docRef.id, [], data.recommendedIds);
   }
   return docRef.id;
 }
 
-export async function updateRestaurant(id: string, data: Partial<Restaurant>, editedBy: string): Promise<void> {
+export async function updateRestaurant(id: string, data: RestaurantUpdate, editedBy: string): Promise<void> {
   const ref = doc(db, COLLECTION_NAME, id);
   const beforeSnap = await getDoc(ref);
 
@@ -151,7 +176,22 @@ export async function updateRestaurant(id: string, data: Partial<Restaurant>, ed
     });
   }
 
-  await updateDoc(ref, data);
+  const { exteriorPhoto, dishPhoto, ...rest } = data;
+  const patch: RestaurantUpdate = { ...rest };
+  if ('exteriorPhoto' in data || 'dishPhoto' in data) {
+    // Only one of the two fields might be present in `data` — merge against whatever's
+    // currently stored so the other photo isn't silently wiped out.
+    const current = await fetchRestaurantPhotos(id);
+    const nextExterior = 'exteriorPhoto' in data ? (exteriorPhoto ?? null) : current.exteriorPhoto;
+    const nextDish = 'dishPhoto' in data ? (dishPhoto ?? null) : current.dishPhoto;
+    await setDoc(doc(db, COLLECTION_NAME, id, PHOTOS_SUBCOLLECTION, PHOTOS_DOC_ID), {
+      exteriorPhoto: nextExterior,
+      dishPhoto: nextDish,
+    });
+    patch.hasPhotos = !!(nextExterior || nextDish);
+  }
+
+  await updateDoc(ref, patch);
 
   if (data.recommendedIds) {
     const before = (beforeSnap.data()?.recommendedIds ?? []) as string[];

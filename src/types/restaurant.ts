@@ -29,12 +29,19 @@ export interface Restaurant {
   // resync affected restaurants when a group's own membership changes.
   visibleToUids: string[];
   visibilityGroupIds?: string[];
-  exteriorPhoto?: PhotoInfo | null;
-  dishPhoto?: PhotoInfo | null;
+  // Actual photo bytes live in restaurants/{id}/photos/main, fetched on demand via
+  // fetchRestaurantPhotos() — this flag is just enough for the list view to know
+  // whether it's worth showing a "tap to view photos" affordance at all.
+  hasPhotos?: boolean;
   customLink?: string;
   recommendedIds?: string[];
   isLunch?: boolean;
   deleted?: boolean;
+}
+
+export interface RestaurantPhotos {
+  exteriorPhoto: PhotoInfo | null;
+  dishPhoto: PhotoInfo | null;
 }
 
 export interface RestaurantHistoryEntry {
@@ -43,6 +50,10 @@ export interface RestaurantHistoryEntry {
   editedBy: string;
   editedAt: unknown;
 }
+
+/** Shape accepted by updateRestaurant() — the main-doc fields being patched, plus optionally
+ *  new photos (routed to the photos subcollection instead of the main doc internally). */
+export type RestaurantUpdate = Partial<Restaurant> & Partial<RestaurantPhotos>;
 
 export interface RestaurantInput {
   name: string;

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { PhotoInfo, Restaurant, Visibility } from '../types/restaurant';
+import { useEffect, useMemo, useState } from 'react';
+import { PhotoInfo, Restaurant, RestaurantUpdate, Visibility } from '../types/restaurant';
 import { ComboSelect } from './ComboSelect';
 import { CuisineMultiSelect } from './CuisineMultiSelect';
 import { LocationPicker } from './LocationPicker';
@@ -11,10 +11,11 @@ import { AreaCategory, CuisineCategory, groupAreasByCategory, groupCuisinesByCat
 import { MapCenter, VisibilityGroup } from '../lib/appSettings';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
 import { isSafeHref } from '../lib/safeUrl';
+import { fetchRestaurantPhotos } from '../lib/db';
 
 interface EditRestaurantModalProps {
   restaurant: Restaurant;
-  onSave: (id: string, data: Partial<Restaurant>) => void;
+  onSave: (id: string, data: RestaurantUpdate) => void;
   onClose: () => void;
   loading: boolean;
   defaultCenter: MapCenter | null;
@@ -56,12 +57,29 @@ export function EditRestaurantModal({
     longitude: restaurant.longitude,
     visibility: restaurant.visibility ?? ('public' as Visibility),
     visibilityGroupIds: restaurant.visibilityGroupIds ?? ([] as string[]),
-    exteriorPhoto: restaurant.exteriorPhoto ?? (null as PhotoInfo | null),
-    dishPhoto: restaurant.dishPhoto ?? (null as PhotoInfo | null),
+    // undefined = "not fetched/touched yet" (kept out of the save patch so it can never
+    // clobber real photo data); becomes a concrete PhotoInfo|null once loaded or edited.
+    exteriorPhoto: undefined as PhotoInfo | null | undefined,
+    dishPhoto: undefined as PhotoInfo | null | undefined,
     customLink: restaurant.customLink ?? '',
     recommendedIds: restaurant.recommendedIds ?? ([] as string[]),
     isLunch: restaurant.isLunch ?? false,
   });
+  const [photosLoaded, setPhotosLoaded] = useState(!restaurant.hasPhotos);
+
+  useEffect(() => {
+    if (!restaurant.hasPhotos) return;
+    let cancelled = false;
+    fetchRestaurantPhotos(restaurant.id).then(photos => {
+      if (cancelled) return;
+      setFormData(prev => ({ ...prev, exteriorPhoto: photos.exteriorPhoto, dishPhoto: photos.dishPhoto }));
+      setPhotosLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -89,7 +107,17 @@ export function EditRestaurantModal({
           )
         : [];
 
-    onSave(restaurant.id, { ...formData, visibleToUids });
+    // Only send exteriorPhoto/dishPhoto if they were actually fetched or edited this
+    // session — otherwise omit them entirely so an unrelated save can't clobber photo
+    // data (e.g. a restaurant not yet migrated to the photos subcollection, whose
+    // hasPhotos flag doesn't yet reflect photos still embedded in the main doc).
+    const { exteriorPhoto, dishPhoto, ...rest } = formData;
+    onSave(restaurant.id, {
+      ...rest,
+      visibleToUids,
+      ...(exteriorPhoto !== undefined ? { exteriorPhoto } : {}),
+      ...(dishPhoto !== undefined ? { dishPhoto } : {}),
+    });
   };
 
   return (
@@ -118,8 +146,11 @@ export function EditRestaurantModal({
                 longitude: snapshot.longitude ?? prev.longitude,
                 visibility: snapshot.visibility ?? prev.visibility,
                 visibilityGroupIds: snapshot.visibilityGroupIds ?? prev.visibilityGroupIds,
-                exteriorPhoto: snapshot.exteriorPhoto ?? prev.exteriorPhoto,
-                dishPhoto: snapshot.dishPhoto ?? prev.dishPhoto,
+                // History snapshots no longer include photo bytes (they now live in a
+                // separate subcollection, not copied into history) — reverting can't
+                // restore old photos, so the current ones are left as-is.
+                exteriorPhoto: prev.exteriorPhoto,
+                dishPhoto: prev.dishPhoto,
                 customLink: snapshot.customLink ?? prev.customLink,
                 recommendedIds: snapshot.recommendedIds ?? prev.recommendedIds,
                 isLunch: snapshot.isLunch ?? prev.isLunch,
@@ -221,16 +252,22 @@ export function EditRestaurantModal({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <PhotoField
-              label="外観の写真"
-              photo={formData.exteriorPhoto}
-              onChange={photo => setFormData(prev => ({ ...prev, exteriorPhoto: photo }))}
-            />
-            <PhotoField
-              label="料理の写真"
-              photo={formData.dishPhoto}
-              onChange={photo => setFormData(prev => ({ ...prev, dishPhoto: photo }))}
-            />
+            {photosLoaded ? (
+              <>
+                <PhotoField
+                  label="外観の写真"
+                  photo={formData.exteriorPhoto ?? null}
+                  onChange={photo => setFormData(prev => ({ ...prev, exteriorPhoto: photo }))}
+                />
+                <PhotoField
+                  label="料理の写真"
+                  photo={formData.dishPhoto ?? null}
+                  onChange={photo => setFormData(prev => ({ ...prev, dishPhoto: photo }))}
+                />
+              </>
+            ) : (
+              <p className="text-sm text-gray-400 md:col-span-2">写真を読み込み中...</p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -287,10 +324,10 @@ export function EditRestaurantModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !photosLoaded}
               className="px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
-              {loading ? '保存中...' : '保存'}
+              {loading ? '保存中...' : !photosLoaded ? '写真を読み込み中...' : '保存'}
             </button>
           </div>
         </form>

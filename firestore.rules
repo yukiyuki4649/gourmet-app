@@ -22,6 +22,17 @@ service cloud.firestore {
         || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.manageCategories == true);
     }
 
+    // Shared by both the restaurant doc's own read rule and its photos subdoc's read rule
+    // below, so the two can never drift out of sync with each other.
+    function isVisibleToViewer(data) {
+      return data.visibility == 'public'
+        || (isSignedIn() && data.visibility == 'private' && (
+             data.addedByUid == request.auth.uid ||
+             request.auth.uid in data.visibleToUids ||
+             isAdmin()
+           ));
+    }
+
     // Public restaurants are visible to anyone, including signed-out visitors.
     // Private restaurants are only visible to the person who added them, anyone
     // on the restaurant's own visibleToUids share list, or an admin.
@@ -32,12 +43,7 @@ service cloud.firestore {
     // "list" queries outright if it can't verify that from the query's own
     // where-clauses, so an unconstrained allow-read here would break listing.
     match /restaurants/{restaurantId} {
-      allow read: if resource.data.visibility == 'public'
-        || (isSignedIn() && resource.data.visibility == 'private' && (
-             resource.data.addedByUid == request.auth.uid ||
-             request.auth.uid in resource.data.visibleToUids ||
-             isAdmin()
-           ));
+      allow read: if isVisibleToViewer(resource.data);
       allow create, update, delete: if canEdit();
 
       // Snapshot recorded automatically before every edit, so past versions can
@@ -45,6 +51,17 @@ service cloud.firestore {
       match /history/{historyId} {
         allow read, create: if canEdit();
         allow update, delete: if false;
+      }
+
+      // Photo bytes (exteriorPhoto/dishPhoto as Base64 data URIs), kept out of the
+      // main doc so the list view's queries don't have to transfer them for every
+      // restaurant on every load. Only ever fetched one restaurant at a time via a
+      // direct get() (see fetchRestaurantPhotos in db.ts) — never listed in bulk —
+      // so the get() call below doesn't run into the list-query-provability issue
+      // that shapes the rest of this file.
+      match /photos/{photoId} {
+        allow read: if isVisibleToViewer(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data);
+        allow write: if canEdit();
       }
     }
 

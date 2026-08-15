@@ -9,7 +9,7 @@ import { AdminSettingsPage } from './components/AdminSettingsPage';
 import { AuthPanel } from './components/AuthPanel';
 import { SecurityInfoPage } from './components/SecurityInfoPage';
 import { SiteQRCode } from './components/SiteQRCode';
-import { Restaurant, RestaurantInput } from './types/restaurant';
+import { Restaurant, RestaurantInput, RestaurantUpdate } from './types/restaurant';
 import {
   getAllRestaurants,
   getDeletedRestaurants,
@@ -246,7 +246,7 @@ export default function App() {
     setEditingId(restaurant.id);
   };
 
-  const handleUpdateRestaurant = async (id: string, data: Partial<Restaurant>) => {
+  const handleUpdateRestaurant = async (id: string, data: RestaurantUpdate) => {
     try {
       setIsUpdating(true);
       await updateRestaurant(id, data, profile?.displayName ?? '不明');
