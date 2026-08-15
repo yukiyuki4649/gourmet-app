@@ -21,7 +21,7 @@ import {
   bulkUpdateRestaurantsIndividually,
 } from './lib/db';
 import { resolveFilterAreas, resolveFilterCuisines, sortByOrder } from './lib/categories';
-import { applyRestaurantFilters, LunchFilter } from './lib/filters';
+import { applyRestaurantFilters, LunchFilter, RatingFilter } from './lib/filters';
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from './lib/appSettings';
 import { PersonalSettings, loadPersonalSettings, savePersonalSettings } from './lib/personalSettings';
 import { onAuthChange, getUserProfile, listUsernames, UserProfile, UsernameEntry } from './lib/auth';
@@ -45,6 +45,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cuisineFilter, setCuisineFilter] = useState('');
   const [lunchFilter, setLunchFilter] = useState<LunchFilter>('');
+  const [ratingFilter, setRatingFilter] = useState<RatingFilter>('');
 
   // Per-browser settings, no login required — loaded synchronously from localStorage.
   const [personalSettings, setPersonalSettings] = useState<PersonalSettings>(() => loadPersonalSettings());
@@ -173,15 +174,17 @@ export default function App() {
         effectiveCuisines,
         person: personalSettings.defaultPersonFilter,
         lunch: lunchFilter,
+        rating: ratingFilter,
       }),
-    [restaurants, effectiveAreas, effectiveCuisines, personalSettings.defaultPersonFilter, lunchFilter],
+    [restaurants, effectiveAreas, effectiveCuisines, personalSettings.defaultPersonFilter, lunchFilter, ratingFilter],
   );
 
   const isFiltered =
     effectiveAreas !== null ||
     effectiveCuisines !== null ||
     personalSettings.defaultPersonFilter !== '' ||
-    lunchFilter !== '';
+    lunchFilter !== '' ||
+    ratingFilter !== '';
 
   const cuisineOptions = useMemo(
     () => sortByOrder(Array.from(new Set(restaurants.flatMap(r => r.cuisines))), appSettings.cuisineOrder),
@@ -418,6 +421,8 @@ export default function App() {
             visibilityGroups={appSettings.visibilityGroups}
             areaOrder={appSettings.areaOrder}
             cuisineOrder={appSettings.cuisineOrder}
+            ratingFilter={ratingFilter}
+            onRatingFilterChange={setRatingFilter}
             areaFilter={areaFilter}
             onAreaFilterChange={setAreaFilter}
             cuisineFilter={cuisineFilter}

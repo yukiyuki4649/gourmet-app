@@ -11,7 +11,7 @@ import {
   resolveFilterCuisines,
   sortByOrder,
 } from '../lib/categories';
-import { applyRestaurantFilters, LunchFilter } from '../lib/filters';
+import { applyRestaurantFilters, LunchFilter, RatingFilter } from '../lib/filters';
 import { VisibilityGroup } from '../lib/appSettings';
 
 interface DashboardProps {
@@ -25,6 +25,8 @@ interface DashboardProps {
   visibilityGroups: VisibilityGroup[];
   areaOrder: string[];
   cuisineOrder: string[];
+  ratingFilter: RatingFilter;
+  onRatingFilterChange: (value: RatingFilter) => void;
   areaFilter: string;
   onAreaFilterChange: (value: string) => void;
   cuisineFilter: string;
@@ -49,6 +51,8 @@ export function Dashboard({
   visibilityGroups,
   areaOrder,
   cuisineOrder,
+  ratingFilter,
+  onRatingFilterChange,
   areaFilter,
   onAreaFilterChange,
   cuisineFilter,
@@ -61,7 +65,6 @@ export function Dashboard({
   canEdit,
   onBulkUpdate,
 }: DashboardProps) {
-  const [sortBy, setSortBy] = useState<'rating' | 'area' | 'cuisine'>('rating');
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
@@ -111,31 +114,17 @@ export function Dashboard({
   useEffect(() => {
     if (!selectedId) return;
     cardRefs.current[selectedId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [selectedId, areaFilter, cuisineFilter, sortBy]);
+  }, [selectedId, areaFilter, cuisineFilter, ratingFilter]);
 
   const filtered = useMemo(() => {
-    let result = applyRestaurantFilters(restaurants, {
+    return applyRestaurantFilters(restaurants, {
       effectiveAreas,
       effectiveCuisines,
       person: personFilter,
       lunch: lunchFilter,
+      rating: ratingFilter,
     });
-
-    if (sortBy === 'rating') {
-      result = [...result].sort((a, b) => {
-        // 未評価(空文字)はAのすぐ下、B以下より上に来るようにする。
-        const ratingOrder = { A: 5, '': 4, B: 3, C: 2, D: 1 };
-        return (ratingOrder[b.overallRating as keyof typeof ratingOrder] ?? 0) -
-               (ratingOrder[a.overallRating as keyof typeof ratingOrder] ?? 0);
-      });
-    } else if (sortBy === 'area') {
-      result = [...result].sort((a, b) => a.area.localeCompare(b.area));
-    } else if (sortBy === 'cuisine') {
-      result = [...result].sort((a, b) => a.cuisines.join('、').localeCompare(b.cuisines.join('、')));
-    }
-
-    return result;
-  }, [restaurants, sortBy, effectiveAreas, effectiveCuisines, personFilter, lunchFilter]);
+  }, [restaurants, effectiveAreas, effectiveCuisines, personFilter, lunchFilter, ratingFilter]);
 
   const allFilteredChecked = filtered.length > 0 && filtered.every(r => checkedIds.has(r.id));
 
@@ -186,15 +175,18 @@ export function Dashboard({
 
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">並べ替え</label>
+            <label className="block text-sm font-medium mb-2">評価で絞り込み</label>
             <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as typeof sortBy)}
+              value={ratingFilter}
+              onChange={e => onRatingFilterChange(e.target.value as RatingFilter)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
-              <option value="rating">評価順</option>
-              <option value="area">エリア順</option>
-              <option value="cuisine">料理種別順</option>
+              <option value="">すべて</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="unrated">未評価</option>
             </select>
           </div>
 
