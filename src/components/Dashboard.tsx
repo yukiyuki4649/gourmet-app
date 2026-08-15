@@ -13,6 +13,7 @@ import {
 } from '../lib/categories';
 import { applyRestaurantFilters, LunchFilter, RatingFilter } from '../lib/filters';
 import { VisibilityGroup } from '../lib/appSettings';
+import { useIsDesktop } from '../lib/useIsDesktop';
 
 interface DashboardProps {
   restaurants: Restaurant[];
@@ -67,6 +68,7 @@ export function Dashboard({
 }: DashboardProps) {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const isDesktop = useIsDesktop();
 
   const handleBulkCheckChange = (id: string, checked: boolean) => {
     setCheckedIds(prev => {
@@ -270,6 +272,7 @@ export function Dashboard({
             onDelete={onDelete}
             onSelect={r => onSelectRestaurant?.(r.id)}
             isSelected={restaurant.id === selectedId}
+            isDesktop={isDesktop}
             showAddedBy={showAddedBy}
             canEdit={canEdit}
             allRestaurants={restaurants}

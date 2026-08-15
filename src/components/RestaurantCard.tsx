@@ -10,6 +10,9 @@ interface RestaurantCardProps {
   onDelete: (id: string) => void;
   onSelect?: (restaurant: Restaurant) => void;
   isSelected?: boolean;
+  // Wide-screen viewers get photos loaded eagerly for every card instead of only the
+  // selected one — mobile keeps the tap-to-load behavior that fixed the load-time issue.
+  isDesktop?: boolean;
   showAddedBy?: boolean;
   canEdit?: boolean;
   allRestaurants?: Restaurant[];
@@ -25,6 +28,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
       onDelete,
       onSelect,
       isSelected,
+      isDesktop,
       showAddedBy,
       canEdit,
       allRestaurants,
@@ -50,8 +54,10 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
     const [photos, setPhotos] = useState<RestaurantPhotos | null>(null);
     const [photosLoading, setPhotosLoading] = useState(false);
 
+    const shouldShowPhotos = isSelected || isDesktop;
+
     useEffect(() => {
-      if (!isSelected || !restaurant.hasPhotos || photos) return;
+      if (!shouldShowPhotos || !restaurant.hasPhotos || photos) return;
       let cancelled = false;
       setPhotosLoading(true);
       fetchRestaurantPhotos(restaurant.id)
@@ -64,7 +70,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
       return () => {
         cancelled = true;
       };
-    }, [isSelected, restaurant.hasPhotos, restaurant.id, photos]);
+    }, [shouldShowPhotos, restaurant.hasPhotos, restaurant.id, photos]);
 
     return (
       <div
@@ -130,7 +136,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
             </a>
           </div>
 
-          {isSelected && restaurant.hasPhotos && (
+          {shouldShowPhotos && restaurant.hasPhotos && (
             <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
               {photosLoading && !photos && (
                 <div className="w-full h-40 sm:w-36 sm:h-32 md:w-44 md:h-36 flex items-center justify-center bg-gray-50 rounded-md border border-gray-100 text-xs text-gray-400">
