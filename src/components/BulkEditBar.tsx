@@ -118,7 +118,7 @@ export function BulkEditBar({ count, areaOptions, visibilityGroups, onApply, onC
           <option value={PUBLIC}>公開にする</option>
           {visibilityGroups.map(g => (
             <option key={g.id} value={`${GROUP_PREFIX}${g.id}`}>
-              非公開({g.name}に共有)
+              限定公開({g.name}に共有)
             </option>
           ))}
         </select>

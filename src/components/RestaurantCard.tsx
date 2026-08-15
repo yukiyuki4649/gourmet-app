@@ -72,7 +72,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
                   {restaurant.name}
                   {restaurant.visibility === 'private' && (
                     <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
-                      🔒 非公開
+                      🔒 限定公開
                     </span>
                   )}
                   {restaurant.isLunch && (

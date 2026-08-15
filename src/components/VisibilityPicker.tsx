@@ -43,7 +43,7 @@ export function VisibilityPicker({ visibility, groups, selectedGroupIds, onChang
               : 'bg-white text-gray-700 border-gray-300'
           }`}
         >
-          非公開
+          限定公開
         </button>
       </div>
 

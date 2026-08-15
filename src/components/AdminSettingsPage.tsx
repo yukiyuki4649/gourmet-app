@@ -330,7 +330,7 @@ export function AdminSettingsPage({
     if (!isAdmin) return;
     if (
       !window.confirm(
-        `グループ「${name}」を削除しますか?このグループだけを共有先にしていた非公開店舗は、追加者と管理者以外の誰にも見えなくなります。`,
+        `グループ「${name}」を削除しますか?このグループだけを共有先にしていた限定公開店舗は、追加者と管理者以外の誰にも見えなくなります。`,
       )
     ) {
       return;
@@ -439,8 +439,8 @@ export function AdminSettingsPage({
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-bold mb-2">限定公開グループ管理</h2>
             <p className="text-sm text-gray-600 mb-4">
-              店舗を「非公開」にしたとき、誰に見せるかをグループ単位で選べるようにします。グループは複数作成でき、名前は自由に付けられます。
-              メンバーを変更して「設定をすべて保存」を押すと、既にそのグループを使っている非公開店舗にもすぐ反映されます。
+              店舗を「限定公開」にしたとき、誰に見せるかをグループ単位で選べるようにします。グループは複数作成でき、名前は自由に付けられます。
+              メンバーを変更して「設定をすべて保存」を押すと、既にそのグループを使っている限定公開店舗にもすぐ反映されます。
             </p>
 
             {draft.visibilityGroups.length > 0 && (
