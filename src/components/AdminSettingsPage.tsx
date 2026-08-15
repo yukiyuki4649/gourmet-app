@@ -42,6 +42,11 @@ export function AdminSettingsPage({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [saveError, setSaveError] = useState('');
 
+  // Excludes the admin themselves from 非公開グループ member pickers — an admin already
+  // sees every private restaurant regardless of visibleToUids (isAdmin() in the read
+  // rule), so listing themselves as a selectable "member" would be meaningless clutter.
+  const otherUsers = useMemo(() => users.filter(u => u.uid !== currentUid), [users, currentUid]);
+
   // --- area/cuisine name renaming (applies immediately across all restaurants) ---
   const [areaRenameDrafts, setAreaRenameDrafts] = useState<Record<string, string>>({});
   const [cuisineRenameDrafts, setCuisineRenameDrafts] = useState<Record<string, string>>({});
@@ -459,10 +464,10 @@ export function AdminSettingsPage({
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {users.length === 0 && (
+                      {otherUsers.length === 0 && (
                         <p className="text-xs text-gray-400">他に登録済みのユーザーがいません</p>
                       )}
-                      {users.map(u => {
+                      {otherUsers.map(u => {
                         const isSelected = group.uids.includes(u.uid);
                         return (
                           <button
