@@ -117,13 +117,21 @@ export function Dashboard({
   }, [selectedId, areaFilter, cuisineFilter, ratingFilter]);
 
   const filtered = useMemo(() => {
-    return applyRestaurantFilters(restaurants, {
+    const result = applyRestaurantFilters(restaurants, {
       effectiveAreas,
       effectiveCuisines,
       person: personFilter,
       lunch: lunchFilter,
       rating: ratingFilter,
     });
+
+    // 表示順は常に評価順(未評価はAのすぐ下、B以下より上)。
+    const ratingOrder = { A: 5, '': 4, B: 3, C: 2, D: 1 };
+    return [...result].sort(
+      (a, b) =>
+        (ratingOrder[b.overallRating as keyof typeof ratingOrder] ?? 0) -
+        (ratingOrder[a.overallRating as keyof typeof ratingOrder] ?? 0),
+    );
   }, [restaurants, effectiveAreas, effectiveCuisines, personFilter, lunchFilter, ratingFilter]);
 
   const allFilteredChecked = filtered.length > 0 && filtered.every(r => checkedIds.has(r.id));
