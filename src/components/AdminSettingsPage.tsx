@@ -430,6 +430,73 @@ export function AdminSettingsPage({
           </div>
         )}
 
+        {isAdmin && (
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-bold mb-2">非公開グループ管理</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              店舗を「非公開」にしたとき、誰に見せるかをグループ単位で選べるようにします。グループは複数作成でき、名前は自由に付けられます。
+              メンバーを変更して「設定をすべて保存」を押すと、既にそのグループを使っている非公開店舗にもすぐ反映されます。
+            </p>
+
+            {draft.visibilityGroups.length > 0 && (
+              <ul className="mb-4 space-y-3">
+                {draft.visibilityGroups.map(group => (
+                  <li key={group.id} className="bg-gray-50 rounded-md px-3 py-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={group.name}
+                        onChange={e => handleRenameVisibilityGroup(group.id, e.target.value)}
+                        placeholder="グループ名(例: 家族)"
+                        className="font-medium px-2 py-1 border border-gray-300 rounded-md flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteVisibilityGroup(group.id, group.name || '(名称未設定)')}
+                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 whitespace-nowrap"
+                      >
+                        削除
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {users.length === 0 && (
+                        <p className="text-xs text-gray-400">他に登録済みのユーザーがいません</p>
+                      )}
+                      {users.map(u => {
+                        const isSelected = group.uids.includes(u.uid);
+                        return (
+                          <button
+                            type="button"
+                            key={u.uid}
+                            onClick={() => handleToggleVisibilityGroupMember(group.id, u.uid)}
+                            aria-pressed={isSelected}
+                            className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                              isSelected
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                            }`}
+                          >
+                            {isSelected ? '✓ ' : ''}
+                            {u.displayName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              onClick={handleAddVisibilityGroup}
+              className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              + 新しいグループを追加
+            </button>
+            <p className="text-xs text-gray-400 mt-2">※ 上部の「設定をすべて保存」まで実行すると反映されます</p>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow p-4">
           <h2 className="text-lg font-bold mb-2">エリアカテゴリ</h2>
           <p className="text-sm text-gray-600 mb-4">
@@ -823,73 +890,6 @@ export function AdminSettingsPage({
                 </ul>
               </div>
             </div>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-bold mb-2">非公開グループ管理</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              店舗を「非公開」にしたとき、誰に見せるかをグループ単位で選べるようにします。グループは複数作成でき、名前は自由に付けられます。
-              メンバーを変更して「設定をすべて保存」を押すと、既にそのグループを使っている非公開店舗にもすぐ反映されます。
-            </p>
-
-            {draft.visibilityGroups.length > 0 && (
-              <ul className="mb-4 space-y-3">
-                {draft.visibilityGroups.map(group => (
-                  <li key={group.id} className="bg-gray-50 rounded-md px-3 py-2">
-                    <div className="flex items-center gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={group.name}
-                        onChange={e => handleRenameVisibilityGroup(group.id, e.target.value)}
-                        placeholder="グループ名(例: 家族)"
-                        className="font-medium px-2 py-1 border border-gray-300 rounded-md flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteVisibilityGroup(group.id, group.name || '(名称未設定)')}
-                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 whitespace-nowrap"
-                      >
-                        削除
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {users.length === 0 && (
-                        <p className="text-xs text-gray-400">他に登録済みのユーザーがいません</p>
-                      )}
-                      {users.map(u => {
-                        const isSelected = group.uids.includes(u.uid);
-                        return (
-                          <button
-                            type="button"
-                            key={u.uid}
-                            onClick={() => handleToggleVisibilityGroupMember(group.id, u.uid)}
-                            aria-pressed={isSelected}
-                            className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                              isSelected
-                                ? 'bg-blue-500 text-white border-blue-500'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                            }`}
-                          >
-                            {isSelected ? '✓ ' : ''}
-                            {u.displayName}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <button
-              onClick={handleAddVisibilityGroup}
-              className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              + 新しいグループを追加
-            </button>
-            <p className="text-xs text-gray-400 mt-2">※ 下部の「設定をすべて保存」まで実行すると反映されます</p>
           </div>
         )}
 

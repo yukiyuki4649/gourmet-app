@@ -148,7 +148,7 @@ export function Dashboard({
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">飲食店一覧</h2>
+          <h2 className="text-xl font-bold">📋 飲食店一覧</h2>
           {canEdit && filtered.length > 0 && (
             <button
               onClick={handleToggleSelectAll}
@@ -247,7 +247,7 @@ export function Dashboard({
             </select>
           </div>
 
-          <div className="col-span-2 md:col-span-2 lg:col-span-1">
+          <div className="hidden md:block md:col-span-2 lg:col-span-1">
             <label className="block text-sm font-medium mb-2">件数</label>
             <div className="px-3 py-2 bg-gray-100 rounded-md">
               {filtered.length} 件

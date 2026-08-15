@@ -108,8 +108,8 @@ export function AddRestaurantForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 className="text-xl font-bold mb-4">新規店舗追加</h2>
+    <form onSubmit={handleSubmit} className="bg-green-50 rounded-lg shadow border-2 border-green-200 p-6 mb-6">
+      <h2 className="text-xl font-bold mb-4 text-green-900">➕ 新規店舗追加</h2>
       <p className="text-sm text-gray-500 mb-4">追加した人として「{addedByName}」が記録されます</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
