@@ -105,15 +105,15 @@ export default function App() {
   const isAdmin = profile?.role === 'admin';
   const canManageCategories = isAdmin || profile?.permissions?.manageCategories === true;
 
-  // Name+uid only (no email/role) — safe to fetch for any canEdit user, since it's just
-  // used to populate the "who can see this private restaurant" picker.
+  // Name+uid only (no email/role) — used to populate the admin-only "非公開グループ管理"
+  // member picker (see AdminSettingsPage).
   const [allUsers, setAllUsers] = useState<UsernameEntry[]>([]);
   useEffect(() => {
-    if (canEdit) {
+    if (isAdmin) {
       listUsernames().then(setAllUsers).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canEdit]);
+  }, [isAdmin]);
 
   // Soft-deleted restaurants, visible only to admins so they can review/restore them.
   const [deletedRestaurants, setDeletedRestaurants] = useState<Restaurant[]>([]);
@@ -347,13 +347,6 @@ export default function App() {
         onSaved={setPersonalSettings}
         isSignedIn={!!authUser}
         canEdit={canEdit}
-        currentUid={authUser?.uid ?? null}
-        users={allUsers}
-        defaultVisibleToUids={profile?.defaultVisibleToUids ?? []}
-        onVisibilityDefaultsSaved={async uids => {
-          setProfile(prev => (prev ? { ...prev, defaultVisibleToUids: uids } : prev));
-          await reloadRestaurants();
-        }}
       />
     );
   }
@@ -373,6 +366,7 @@ export default function App() {
         isAdmin={isAdmin}
         isSignedIn={!!authUser}
         currentUid={authUser?.uid ?? null}
+        users={allUsers}
         onRenameArea={handleRenameArea}
         onRenameCuisine={handleRenameCuisine}
         deletedRestaurants={deletedRestaurants}
@@ -448,8 +442,7 @@ export default function App() {
             addedByName={profile?.displayName ?? ''}
             addedByUid={authUser?.uid ?? ''}
             defaultCenter={personalSettings.defaultCenter}
-            users={allUsers}
-            defaultVisibleToUids={profile?.defaultVisibleToUids ?? []}
+            visibilityGroups={appSettings.visibilityGroups}
             allRestaurants={restaurants}
           />
         ) : (
@@ -507,8 +500,7 @@ export default function App() {
           onClose={() => setEditingId(null)}
           loading={isUpdating}
           defaultCenter={personalSettings.defaultCenter}
-          users={allUsers}
-          defaultVisibleToUids={profile?.defaultVisibleToUids ?? []}
+          visibilityGroups={appSettings.visibilityGroups}
           allRestaurants={restaurants}
           cuisineOptions={cuisineOptions}
           areaOptions={areaOptions}

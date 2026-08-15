@@ -30,9 +30,6 @@ export interface UserProfile {
   displayName: string;
   role: UserRole;
   permissions?: UserPermissions;
-  // Account-wide default for "who can see my private restaurants" — set once on the
-  // personal settings page instead of picked per-restaurant (see VisibilityPicker).
-  defaultVisibleToUids?: string[];
 }
 
 /** Name + uid only — no email/role — for pickers (e.g. sharing a private restaurant with
@@ -161,9 +158,4 @@ export async function setUserRole(uid: string, role: UserRole): Promise<void> {
 
 export async function setUserManageCategories(uid: string, allowed: boolean): Promise<void> {
   await updateDoc(doc(db, USERS_COLLECTION, uid), { 'permissions.manageCategories': allowed });
-}
-
-/** Sets the account-wide default sharing list for private restaurants (see UserProfile.defaultVisibleToUids). */
-export async function setDefaultVisibleToUids(uid: string, uids: string[]): Promise<void> {
-  await updateDoc(doc(db, USERS_COLLECTION, uid), { defaultVisibleToUids: uids });
 }

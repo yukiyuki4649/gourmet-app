@@ -7,6 +7,19 @@ export interface MapCenter {
   lng: number;
 }
 
+/**
+ * A named, admin-managed sharing group (e.g. "家族", "職場") — replaces picking
+ * individual people per-restaurant. A private restaurant's visibleToUids is a
+ * deduped union of every group referenced in its visibilityGroupIds; see
+ * resyncPrivateRestaurantsWithVisibilityGroups in db.ts for how edits here
+ * propagate back to already-saved restaurants.
+ */
+export interface VisibilityGroup {
+  id: string;
+  name: string;
+  uids: string[];
+}
+
 /** Shared, admin-managed settings — stored in Firestore, edited only by people with category-management permission. */
 export interface AppSettings {
   categories: AreaCategory[];
@@ -15,6 +28,7 @@ export interface AppSettings {
   // Names not yet present here fall back to alphabetical, appended after the ranked ones.
   areaOrder: string[];
   cuisineOrder: string[];
+  visibilityGroups: VisibilityGroup[];
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -22,6 +36,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   cuisineCategories: [],
   areaOrder: [],
   cuisineOrder: [],
+  visibilityGroups: [],
 };
 
 function settingsDocRef() {
@@ -37,6 +52,7 @@ export async function loadAppSettings(): Promise<AppSettings> {
     cuisineCategories: Array.isArray(data.cuisineCategories) ? data.cuisineCategories : [],
     areaOrder: Array.isArray(data.areaOrder) ? data.areaOrder : [],
     cuisineOrder: Array.isArray(data.cuisineOrder) ? data.cuisineOrder : [],
+    visibilityGroups: Array.isArray(data.visibilityGroups) ? data.visibilityGroups : [],
   };
 }
 

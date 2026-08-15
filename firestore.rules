@@ -60,8 +60,9 @@ service cloud.firestore {
     // narrower than "any signed-in user": you can always read your own profile (needed
     // right after signup, before you're approved, to show your pending status), but
     // reading anyone else's — or listing the whole collection — is admin-only. Approved
-    // (non-admin) editors never see other users' emails/roles this way; the "who can see
-    // this private restaurant" picker instead reads the email-free `usernames` collection.
+    // (non-admin) editors never see other users' emails/roles this way; the admin-managed
+    // "非公開グループ" member pickers (settings/app.visibilityGroups) instead read the
+    // email-free `usernames` collection.
     // A new signup may only create its own doc with role "pending" — nobody can
     // self-promote to admin/approved. Only an admin can change someone's role afterwards.
     match /users/{userId} {
@@ -70,12 +71,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending';
-      // Admins can change anything (role, permissions, etc). Anyone can update only
-      // their own defaultVisibleToUids (the account-wide "who sees my private
-      // restaurants" default) — no other field, so this can't be used to self-promote.
-      allow update: if isAdmin()
-        || (isSignedIn() && request.auth.uid == userId
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['defaultVisibleToUids']));
+      allow update: if isAdmin();
       // Anyone can delete their own profile (account withdrawal); an admin can
       // delete anyone's.
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);

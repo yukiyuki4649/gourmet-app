@@ -6,8 +6,7 @@ import { LocationPicker } from './LocationPicker';
 import { VisibilityPicker } from './VisibilityPicker';
 import { RecommendPicker } from './RecommendPicker';
 import { AreaCategory, CuisineCategory, groupAreasByCategory, groupCuisinesByCategory } from '../lib/categories';
-import { MapCenter } from '../lib/appSettings';
-import { UsernameEntry } from '../lib/auth';
+import { MapCenter, VisibilityGroup } from '../lib/appSettings';
 import { suggestRestaurantPhotos } from '../lib/unsplash';
 import { Restaurant } from '../types/restaurant';
 
@@ -21,8 +20,7 @@ interface AddRestaurantFormProps {
   addedByName: string;
   addedByUid: string;
   defaultCenter: MapCenter | null;
-  users: UsernameEntry[];
-  defaultVisibleToUids: string[];
+  visibilityGroups: VisibilityGroup[];
   allRestaurants: Restaurant[];
 }
 
@@ -40,6 +38,7 @@ function makeInitialFormData(addedByName: string, addedByUid: string) {
     addedBy: addedByName,
     addedByUid,
     visibility: 'public' as Visibility,
+    visibilityGroupIds: [] as string[],
     exteriorPhoto: null as PhotoInfo | null,
     dishPhoto: null as PhotoInfo | null,
     recommendedIds: [] as string[],
@@ -57,8 +56,7 @@ export function AddRestaurantForm({
   addedByName,
   addedByUid,
   defaultCenter,
-  users,
-  defaultVisibleToUids,
+  visibilityGroups,
   allRestaurants,
 }: AddRestaurantFormProps) {
   const [formData, setFormData] = useState(() => makeInitialFormData(addedByName, addedByUid));
@@ -89,9 +87,20 @@ export function AddRestaurantForm({
     }));
     setFetchingPhotos(false);
 
+    const visibleToUids =
+      formData.visibility === 'private'
+        ? Array.from(
+            new Set(
+              formData.visibilityGroupIds.flatMap(
+                id => visibilityGroups.find(g => g.id === id)?.uids ?? [],
+              ),
+            ),
+          )
+        : [];
+
     onSubmit({
       ...formData,
-      visibleToUids: formData.visibility === 'private' ? defaultVisibleToUids : [],
+      visibleToUids,
       exteriorPhoto,
       dishPhoto,
     });
@@ -194,9 +203,11 @@ export function AddRestaurantForm({
       <div className="mb-4">
         <VisibilityPicker
           visibility={formData.visibility}
-          onChange={visibility => setFormData(prev => ({ ...prev, visibility }))}
-          defaultVisibleToUids={defaultVisibleToUids}
-          users={users}
+          groups={visibilityGroups}
+          selectedGroupIds={formData.visibilityGroupIds}
+          onChange={(visibility, visibilityGroupIds) =>
+            setFormData(prev => ({ ...prev, visibility, visibilityGroupIds }))
+          }
         />
       </div>
 

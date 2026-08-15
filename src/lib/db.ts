@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Restaurant, RestaurantInput, RestaurantHistoryEntry } from '../types/restaurant';
+import { VisibilityGroup } from './appSettings';
 
 const COLLECTION_NAME = 'restaurants';
 const HISTORY_SUBCOLLECTION = 'history';
@@ -201,27 +202,43 @@ export async function restoreRestaurant(id: string): Promise<void> {
 }
 
 /**
- * Applies a newly-saved "default sharing list" (see setDefaultVisibleToUids in auth.ts)
- * to every private restaurant the current user has already added, so changing the
- * setting takes effect everywhere immediately rather than only on restaurants touched
- * from now on. Both where-clauses are equality-only, so this doesn't need a composite
- * index, and it's provably compliant with the same read rule that already lets an
- * owner see/query their own private restaurants regardless of visibleToUids.
+ * Re-derives visibleToUids (and drops references to deleted groups) for every private
+ * restaurant, from the current set of admin-managed visibility groups. Called after
+ * saving group changes in AdminSettingsPage so edits (renaming a group's members,
+ * deleting a group) take effect immediately on restaurants that already reference it,
+ * not just ones saved from now on. `visibility=='private'` alone is enough for this
+ * query to be provable for an admin caller — the same pattern fetchVisibleRestaurants
+ * already relies on for the admin branch, since isAdmin() in the read rule doesn't
+ * depend on resource.data and so dominates the rest of that OR for every matched doc.
+ * Only restaurants whose derived value actually changed get written.
  */
-export async function applyDefaultVisibilityToOwnRestaurants(uid: string, visibleToUids: string[]): Promise<void> {
-  const q = query(
-    collection(db, COLLECTION_NAME),
-    where('addedByUid', '==', uid),
-    where('visibility', '==', 'private'),
-  );
+export async function resyncPrivateRestaurantsWithVisibilityGroups(groups: VisibilityGroup[]): Promise<void> {
+  const uidsById = new Map(groups.map(g => [g.id, g.uids]));
+
+  const q = query(collection(db, COLLECTION_NAME), where('visibility', '==', 'private'));
   const snap = await getDocs(q);
   if (snap.empty) return;
 
   const batch = writeBatch(db);
+  let touched = 0;
   for (const docSnap of snap.docs) {
-    batch.update(docSnap.ref, { visibleToUids });
+    const data = docSnap.data();
+    const currentGroupIds: string[] = Array.isArray(data.visibilityGroupIds) ? data.visibilityGroupIds : [];
+    const nextGroupIds = currentGroupIds.filter(id => uidsById.has(id));
+    const nextVisibleToUids = Array.from(new Set(nextGroupIds.flatMap(id => uidsById.get(id) ?? [])));
+    const currentVisibleToUids: string[] = Array.isArray(data.visibleToUids) ? data.visibleToUids : [];
+
+    const sameGroups =
+      nextGroupIds.length === currentGroupIds.length && nextGroupIds.every(id => currentGroupIds.includes(id));
+    const sameUids =
+      nextVisibleToUids.length === currentVisibleToUids.length &&
+      nextVisibleToUids.every(uid => currentVisibleToUids.includes(uid));
+    if (sameGroups && sameUids) continue;
+
+    batch.update(docSnap.ref, { visibilityGroupIds: nextGroupIds, visibleToUids: nextVisibleToUids });
+    touched++;
   }
-  await batch.commit();
+  if (touched > 0) await batch.commit();
 }
 
 export async function bulkImportRestaurants(

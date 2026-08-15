@@ -1,20 +1,23 @@
 import { Visibility } from '../types/restaurant';
-import { UsernameEntry } from '../lib/auth';
+import { VisibilityGroup } from '../lib/appSettings';
 
 interface VisibilityPickerProps {
   visibility: Visibility;
-  onChange: (visibility: Visibility) => void;
-  defaultVisibleToUids: string[];
-  users: UsernameEntry[];
+  groups: VisibilityGroup[];
+  selectedGroupIds: string[];
+  onChange: (visibility: Visibility, groupIds: string[]) => void;
 }
 
-// Who can see a private restaurant is no longer chosen per-restaurant — it's a single
-// account-wide list configured on the personal settings page (see PersonalSettingsPage's
-// "非公開の店舗を見せる人" section) and applied automatically here.
-export function VisibilityPicker({ visibility, onChange, defaultVisibleToUids, users }: VisibilityPickerProps) {
-  const names = defaultVisibleToUids
-    .map(uid => users.find(u => u.uid === uid)?.displayName)
-    .filter((name): name is string => !!name);
+// Who can see a private restaurant is chosen by picking one or more named groups
+// (managed centrally in 管理者設定 → 非公開グループ管理), not by hand-picking
+// individual people per-restaurant.
+export function VisibilityPicker({ visibility, groups, selectedGroupIds, onChange }: VisibilityPickerProps) {
+  const toggleGroup = (groupId: string) => {
+    const next = selectedGroupIds.includes(groupId)
+      ? selectedGroupIds.filter(id => id !== groupId)
+      : [...selectedGroupIds, groupId];
+    onChange('private', next);
+  };
 
   return (
     <div>
@@ -22,7 +25,7 @@ export function VisibilityPicker({ visibility, onChange, defaultVisibleToUids, u
       <div className="flex gap-2 mb-2">
         <button
           type="button"
-          onClick={() => onChange('public')}
+          onClick={() => onChange('public', selectedGroupIds)}
           className={`px-4 py-2 text-sm rounded-md border ${
             visibility === 'public'
               ? 'bg-blue-500 text-white border-blue-500'
@@ -33,7 +36,7 @@ export function VisibilityPicker({ visibility, onChange, defaultVisibleToUids, u
         </button>
         <button
           type="button"
-          onClick={() => onChange('private')}
+          onClick={() => onChange('private', selectedGroupIds)}
           className={`px-4 py-2 text-sm rounded-md border ${
             visibility === 'private'
               ? 'bg-blue-500 text-white border-blue-500'
@@ -45,10 +48,35 @@ export function VisibilityPicker({ visibility, onChange, defaultVisibleToUids, u
       </div>
 
       {visibility === 'private' && (
-        <p className="text-xs text-gray-500">
-          {names.length > 0 ? `${names.join('、')}さんに表示されます。` : '自分以外の誰にも表示されません。'}
-          変更は「個人設定」の「非公開の店舗を見せる人」から行えます。
-        </p>
+        <div>
+          <p className="text-xs text-gray-500 mb-2">この店舗を見せるグループを選んでください(複数可)</p>
+          {groups.length === 0 ? (
+            <p className="text-xs text-gray-400">
+              非公開グループがまだありません。管理者設定の「非公開グループ管理」から作成してください。
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {groups.map(g => {
+                const isSelected = selectedGroupIds.includes(g.id);
+                return (
+                  <button
+                    type="button"
+                    key={g.id}
+                    onClick={() => toggleGroup(g.id)}
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      isSelected
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : ''}
+                    {g.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

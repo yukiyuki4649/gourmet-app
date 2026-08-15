@@ -8,8 +8,7 @@ import { PhotoField } from './PhotoField';
 import { HistoryPanel } from './HistoryPanel';
 import { RecommendPicker } from './RecommendPicker';
 import { AreaCategory, CuisineCategory, groupAreasByCategory, groupCuisinesByCategory } from '../lib/categories';
-import { MapCenter } from '../lib/appSettings';
-import { UsernameEntry } from '../lib/auth';
+import { MapCenter, VisibilityGroup } from '../lib/appSettings';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
 import { isSafeHref } from '../lib/safeUrl';
 
@@ -19,8 +18,7 @@ interface EditRestaurantModalProps {
   onClose: () => void;
   loading: boolean;
   defaultCenter: MapCenter | null;
-  users: UsernameEntry[];
-  defaultVisibleToUids: string[];
+  visibilityGroups: VisibilityGroup[];
   allRestaurants: Restaurant[];
   cuisineOptions: string[];
   areaOptions: string[];
@@ -34,8 +32,7 @@ export function EditRestaurantModal({
   onClose,
   loading,
   defaultCenter,
-  users,
-  defaultVisibleToUids,
+  visibilityGroups,
   allRestaurants,
   cuisineOptions,
   areaOptions,
@@ -58,6 +55,7 @@ export function EditRestaurantModal({
     latitude: restaurant.latitude,
     longitude: restaurant.longitude,
     visibility: restaurant.visibility ?? ('public' as Visibility),
+    visibilityGroupIds: restaurant.visibilityGroupIds ?? ([] as string[]),
     exteriorPhoto: restaurant.exteriorPhoto ?? (null as PhotoInfo | null),
     dishPhoto: restaurant.dishPhoto ?? (null as PhotoInfo | null),
     customLink: restaurant.customLink ?? '',
@@ -80,10 +78,18 @@ export function EditRestaurantModal({
       alert('リンクは http:// または https:// で始まるURLを入力してください');
       return;
     }
-    onSave(restaurant.id, {
-      ...formData,
-      visibleToUids: formData.visibility === 'private' ? defaultVisibleToUids : [],
-    });
+    const visibleToUids =
+      formData.visibility === 'private'
+        ? Array.from(
+            new Set(
+              formData.visibilityGroupIds.flatMap(
+                id => visibilityGroups.find(g => g.id === id)?.uids ?? [],
+              ),
+            ),
+          )
+        : [];
+
+    onSave(restaurant.id, { ...formData, visibleToUids });
   };
 
   return (
@@ -111,6 +117,7 @@ export function EditRestaurantModal({
                 latitude: snapshot.latitude ?? prev.latitude,
                 longitude: snapshot.longitude ?? prev.longitude,
                 visibility: snapshot.visibility ?? prev.visibility,
+                visibilityGroupIds: snapshot.visibilityGroupIds ?? prev.visibilityGroupIds,
                 exteriorPhoto: snapshot.exteriorPhoto ?? prev.exteriorPhoto,
                 dishPhoto: snapshot.dishPhoto ?? prev.dishPhoto,
                 customLink: snapshot.customLink ?? prev.customLink,
@@ -229,9 +236,11 @@ export function EditRestaurantModal({
           <div className="mb-4">
             <VisibilityPicker
               visibility={formData.visibility}
-              onChange={visibility => setFormData(prev => ({ ...prev, visibility }))}
-              defaultVisibleToUids={defaultVisibleToUids}
-              users={users}
+              groups={visibilityGroups}
+              selectedGroupIds={formData.visibilityGroupIds}
+              onChange={(visibility, visibilityGroupIds) =>
+                setFormData(prev => ({ ...prev, visibility, visibilityGroupIds }))
+              }
             />
           </div>
 

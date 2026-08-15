@@ -22,7 +22,13 @@ export interface Restaurant {
   addedBy: string;
   addedByUid?: string;
   visibility: Visibility;
+  // The actual enforcement field, read by Firestore security rules and queries — a flat,
+  // deduped union of every selected group's members. visibilityGroupIds is metadata only,
+  // recording which named groups (see VisibilityGroup in lib/appSettings.ts) this value
+  // was derived from, so the edit form can show/re-select them and so admin can bulk-
+  // resync affected restaurants when a group's own membership changes.
   visibleToUids: string[];
+  visibilityGroupIds?: string[];
   exteriorPhoto?: PhotoInfo | null;
   dishPhoto?: PhotoInfo | null;
   customLink?: string;
@@ -50,6 +56,7 @@ export interface RestaurantInput {
   addedByUid: string;
   visibility: Visibility;
   visibleToUids: string[];
+  visibilityGroupIds?: string[];
   exteriorPhoto?: PhotoInfo | null;
   dishPhoto?: PhotoInfo | null;
   customLink?: string;
