@@ -67,6 +67,7 @@ export function Dashboard({
   onBulkUpdate,
 }: DashboardProps) {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const listRef = useRef<HTMLDivElement>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const isDesktop = useIsDesktop();
 
@@ -117,6 +118,17 @@ export function Dashboard({
     if (!selectedId) return;
     cardRefs.current[selectedId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [selectedId, areaFilter, cuisineFilter, ratingFilter]);
+
+  // A filter change swaps in a different (often shorter) result list, but the scroll
+  // container itself never unmounts — without this, the browser just clamps the old
+  // scroll position to the new content height, so it can land mid-list or at the very
+  // bottom. Reset to the top whenever the filters actually change the result set.
+  // Skipped while something's selected so it doesn't fight the scrollIntoView above.
+  useEffect(() => {
+    if (selectedId) return;
+    listRef.current?.scrollTo({ top: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveAreas, effectiveCuisines, personFilter, lunchFilter, ratingFilter]);
 
   const filtered = useMemo(() => {
     const result = applyRestaurantFilters(restaurants, {
@@ -262,7 +274,7 @@ export function Dashboard({
         </div>
       </div>
 
-      <div className="divide-y max-h-[36rem] overflow-y-auto">
+      <div ref={listRef} className="divide-y max-h-[36rem] overflow-y-auto">
         {filtered.map(restaurant => (
           <RestaurantCard
             key={restaurant.id}
