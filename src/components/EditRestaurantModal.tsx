@@ -20,7 +20,7 @@ interface EditRestaurantModalProps {
   loading: boolean;
   defaultCenter: MapCenter | null;
   users: UsernameEntry[];
-  currentUid: string | null;
+  defaultVisibleToUids: string[];
   allRestaurants: Restaurant[];
   cuisineOptions: string[];
   areaOptions: string[];
@@ -35,7 +35,7 @@ export function EditRestaurantModal({
   loading,
   defaultCenter,
   users,
-  currentUid,
+  defaultVisibleToUids,
   allRestaurants,
   cuisineOptions,
   areaOptions,
@@ -58,7 +58,6 @@ export function EditRestaurantModal({
     latitude: restaurant.latitude,
     longitude: restaurant.longitude,
     visibility: restaurant.visibility ?? ('public' as Visibility),
-    visibleToUids: restaurant.visibleToUids ?? [],
     exteriorPhoto: restaurant.exteriorPhoto ?? (null as PhotoInfo | null),
     dishPhoto: restaurant.dishPhoto ?? (null as PhotoInfo | null),
     customLink: restaurant.customLink ?? '',
@@ -81,7 +80,10 @@ export function EditRestaurantModal({
       alert('リンクは http:// または https:// で始まるURLを入力してください');
       return;
     }
-    onSave(restaurant.id, formData);
+    onSave(restaurant.id, {
+      ...formData,
+      visibleToUids: formData.visibility === 'private' ? defaultVisibleToUids : [],
+    });
   };
 
   return (
@@ -109,7 +111,6 @@ export function EditRestaurantModal({
                 latitude: snapshot.latitude ?? prev.latitude,
                 longitude: snapshot.longitude ?? prev.longitude,
                 visibility: snapshot.visibility ?? prev.visibility,
-                visibleToUids: snapshot.visibleToUids ?? prev.visibleToUids,
                 exteriorPhoto: snapshot.exteriorPhoto ?? prev.exteriorPhoto,
                 dishPhoto: snapshot.dishPhoto ?? prev.dishPhoto,
                 customLink: snapshot.customLink ?? prev.customLink,
@@ -228,10 +229,9 @@ export function EditRestaurantModal({
           <div className="mb-4">
             <VisibilityPicker
               visibility={formData.visibility}
-              visibleToUids={formData.visibleToUids}
-              onChange={(visibility, visibleToUids) => setFormData(prev => ({ ...prev, visibility, visibleToUids }))}
+              onChange={visibility => setFormData(prev => ({ ...prev, visibility }))}
+              defaultVisibleToUids={defaultVisibleToUids}
               users={users}
-              currentUid={currentUid}
             />
           </div>
 

@@ -3,21 +3,18 @@ import { UsernameEntry } from '../lib/auth';
 
 interface VisibilityPickerProps {
   visibility: Visibility;
-  visibleToUids: string[];
-  onChange: (visibility: Visibility, visibleToUids: string[]) => void;
+  onChange: (visibility: Visibility) => void;
+  defaultVisibleToUids: string[];
   users: UsernameEntry[];
-  currentUid: string | null;
 }
 
-export function VisibilityPicker({ visibility, visibleToUids, onChange, users, currentUid }: VisibilityPickerProps) {
-  const otherUsers = users.filter(u => u.uid !== currentUid);
-
-  const toggleUser = (uid: string) => {
-    const next = visibleToUids.includes(uid)
-      ? visibleToUids.filter(id => id !== uid)
-      : [...visibleToUids, uid];
-    onChange('private', next);
-  };
+// Who can see a private restaurant is no longer chosen per-restaurant — it's a single
+// account-wide list configured on the personal settings page (see PersonalSettingsPage's
+// "非公開の店舗を見せる人" section) and applied automatically here.
+export function VisibilityPicker({ visibility, onChange, defaultVisibleToUids, users }: VisibilityPickerProps) {
+  const names = defaultVisibleToUids
+    .map(uid => users.find(u => u.uid === uid)?.displayName)
+    .filter((name): name is string => !!name);
 
   return (
     <div>
@@ -25,7 +22,7 @@ export function VisibilityPicker({ visibility, visibleToUids, onChange, users, c
       <div className="flex gap-2 mb-2">
         <button
           type="button"
-          onClick={() => onChange('public', visibleToUids)}
+          onClick={() => onChange('public')}
           className={`px-4 py-2 text-sm rounded-md border ${
             visibility === 'public'
               ? 'bg-blue-500 text-white border-blue-500'
@@ -36,7 +33,7 @@ export function VisibilityPicker({ visibility, visibleToUids, onChange, users, c
         </button>
         <button
           type="button"
-          onClick={() => onChange('private', visibleToUids)}
+          onClick={() => onChange('private')}
           className={`px-4 py-2 text-sm rounded-md border ${
             visibility === 'private'
               ? 'bg-blue-500 text-white border-blue-500'
@@ -48,34 +45,10 @@ export function VisibilityPicker({ visibility, visibleToUids, onChange, users, c
       </div>
 
       {visibility === 'private' && (
-        <div>
-          <p className="text-xs text-gray-500 mb-2">
-            自分以外に、この店舗を見られる人を選んでください
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {otherUsers.length === 0 && (
-              <p className="text-xs text-gray-400">他に登録済みのユーザーがいません</p>
-            )}
-            {otherUsers.map(u => {
-              const isSelected = visibleToUids.includes(u.uid);
-              return (
-                <button
-                  type="button"
-                  key={u.uid}
-                  onClick={() => toggleUser(u.uid)}
-                  className={`px-3 py-1 rounded-full text-sm border ${
-                    isSelected
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'bg-white text-gray-700 border-gray-300'
-                  }`}
-                >
-                  {isSelected ? '✓ ' : ''}
-                  {u.displayName}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <p className="text-xs text-gray-500">
+          {names.length > 0 ? `${names.join('、')}さんに表示されます。` : '自分以外の誰にも表示されません。'}
+          変更は「個人設定」の「非公開の店舗を見せる人」から行えます。
+        </p>
       )}
     </div>
   );

@@ -70,7 +70,12 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending';
-      allow update: if isAdmin();
+      // Admins can change anything (role, permissions, etc). Anyone can update only
+      // their own defaultVisibleToUids (the account-wide "who sees my private
+      // restaurants" default) — no other field, so this can't be used to self-promote.
+      allow update: if isAdmin()
+        || (isSignedIn() && request.auth.uid == userId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['defaultVisibleToUids']));
       // Anyone can delete their own profile (account withdrawal); an admin can
       // delete anyone's.
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);

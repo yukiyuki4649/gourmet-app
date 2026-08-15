@@ -22,6 +22,7 @@ interface AddRestaurantFormProps {
   addedByUid: string;
   defaultCenter: MapCenter | null;
   users: UsernameEntry[];
+  defaultVisibleToUids: string[];
   allRestaurants: Restaurant[];
 }
 
@@ -39,7 +40,6 @@ function makeInitialFormData(addedByName: string, addedByUid: string) {
     addedBy: addedByName,
     addedByUid,
     visibility: 'public' as Visibility,
-    visibleToUids: [] as string[],
     exteriorPhoto: null as PhotoInfo | null,
     dishPhoto: null as PhotoInfo | null,
     recommendedIds: [] as string[],
@@ -58,6 +58,7 @@ export function AddRestaurantForm({
   addedByUid,
   defaultCenter,
   users,
+  defaultVisibleToUids,
   allRestaurants,
 }: AddRestaurantFormProps) {
   const [formData, setFormData] = useState(() => makeInitialFormData(addedByName, addedByUid));
@@ -88,7 +89,12 @@ export function AddRestaurantForm({
     }));
     setFetchingPhotos(false);
 
-    onSubmit({ ...formData, exteriorPhoto, dishPhoto });
+    onSubmit({
+      ...formData,
+      visibleToUids: formData.visibility === 'private' ? defaultVisibleToUids : [],
+      exteriorPhoto,
+      dishPhoto,
+    });
     setFormData(makeInitialFormData(addedByName, addedByUid));
   };
 
@@ -188,10 +194,9 @@ export function AddRestaurantForm({
       <div className="mb-4">
         <VisibilityPicker
           visibility={formData.visibility}
-          visibleToUids={formData.visibleToUids}
-          onChange={(visibility, visibleToUids) => setFormData(prev => ({ ...prev, visibility, visibleToUids }))}
+          onChange={visibility => setFormData(prev => ({ ...prev, visibility }))}
+          defaultVisibleToUids={defaultVisibleToUids}
           users={users}
-          currentUid={addedByUid}
         />
       </div>
 

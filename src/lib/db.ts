@@ -200,6 +200,30 @@ export async function restoreRestaurant(id: string): Promise<void> {
   await updateDoc(doc(db, COLLECTION_NAME, id), { deleted: false });
 }
 
+/**
+ * Applies a newly-saved "default sharing list" (see setDefaultVisibleToUids in auth.ts)
+ * to every private restaurant the current user has already added, so changing the
+ * setting takes effect everywhere immediately rather than only on restaurants touched
+ * from now on. Both where-clauses are equality-only, so this doesn't need a composite
+ * index, and it's provably compliant with the same read rule that already lets an
+ * owner see/query their own private restaurants regardless of visibleToUids.
+ */
+export async function applyDefaultVisibilityToOwnRestaurants(uid: string, visibleToUids: string[]): Promise<void> {
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    where('addedByUid', '==', uid),
+    where('visibility', '==', 'private'),
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return;
+
+  const batch = writeBatch(db);
+  for (const docSnap of snap.docs) {
+    batch.update(docSnap.ref, { visibleToUids });
+  }
+  await batch.commit();
+}
+
 export async function bulkImportRestaurants(
   restaurants: Array<RestaurantInput & { latitude: number; longitude: number }>,
 ): Promise<void> {

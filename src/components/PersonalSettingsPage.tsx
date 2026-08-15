@@ -5,6 +5,8 @@ import { MapCenter } from '../lib/appSettings';
 import { PersonalSettings, savePersonalSettings } from '../lib/personalSettings';
 import { AreaCategory, buildFilterGroups, sortByOrder } from '../lib/categories';
 import { GOOGLE_MAPS_LIBRARIES } from '../lib/googleMapsLibraries';
+import { UsernameEntry, setDefaultVisibleToUids } from '../lib/auth';
+import { applyDefaultVisibilityToOwnRestaurants } from '../lib/db';
 
 const containerStyle = {
   width: '100%',
@@ -21,6 +23,10 @@ interface PersonalSettingsPageProps {
   onSaved: (settings: PersonalSettings) => void;
   isSignedIn: boolean;
   canEdit: boolean;
+  currentUid: string | null;
+  users: UsernameEntry[];
+  defaultVisibleToUids: string[];
+  onVisibilityDefaultsSaved: (uids: string[]) => void;
 }
 
 export function PersonalSettingsPage({
@@ -31,6 +37,10 @@ export function PersonalSettingsPage({
   onSaved,
   isSignedIn,
   canEdit,
+  currentUid,
+  users,
+  defaultVisibleToUids,
+  onVisibilityDefaultsSaved,
 }: PersonalSettingsPageProps) {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -85,6 +95,32 @@ export function PersonalSettingsPage({
     savePersonalSettings(draft);
     onSaved(draft);
     setSaveState('saved');
+  };
+
+  // Account-wide default for who sees this person's private restaurants — saved to
+  // Firestore (not localStorage, since it has to be enforced server-side and follow
+  // the account across devices), separately from the rest of this page's settings.
+  const otherUsers = useMemo(() => users.filter(u => u.uid !== currentUid), [users, currentUid]);
+  const [visibilityDraft, setVisibilityDraft] = useState<string[]>(defaultVisibleToUids);
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
+  const [visibilitySaveState, setVisibilitySaveState] = useState<'idle' | 'saved'>('idle');
+
+  const toggleVisibilityUser = (uid: string) => {
+    setVisibilityDraft(prev => (prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]));
+    setVisibilitySaveState('idle');
+  };
+
+  const handleSaveVisibilityDefaults = async () => {
+    if (!currentUid) return;
+    setVisibilitySaving(true);
+    try {
+      await setDefaultVisibleToUids(currentUid, visibilityDraft);
+      await applyDefaultVisibilityToOwnRestaurants(currentUid, visibilityDraft);
+      onVisibilityDefaultsSaved(visibilityDraft);
+      setVisibilitySaveState('saved');
+    } finally {
+      setVisibilitySaving(false);
+    }
   };
 
   return (
@@ -229,6 +265,50 @@ export function PersonalSettingsPage({
             一覧に追加者の名前を表示する
           </label>
         </div>
+
+        {isSignedIn && canEdit && (
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-bold mb-2">非公開の店舗を見せる人</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              店舗を「非公開」にしたとき、自分以外に見せたい人をここでまとめて選びます。店舗を追加・編集するたびに選び直す必要はありません。ここで保存すると、既に非公開にしている自分の店舗にもすぐ反映されます。
+            </p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {otherUsers.length === 0 && (
+                <p className="text-xs text-gray-400">他に登録済みのユーザーがいません</p>
+              )}
+              {otherUsers.map(u => {
+                const isSelected = visibilityDraft.includes(u.uid);
+                return (
+                  <button
+                    type="button"
+                    key={u.uid}
+                    onClick={() => toggleVisibilityUser(u.uid)}
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      isSelected
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : ''}
+                    {u.displayName}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={handleSaveVisibilityDefaults}
+              disabled={visibilitySaving}
+              className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 font-medium disabled:opacity-50"
+            >
+              {visibilitySaving ? '保存中...' : 'この設定を保存'}
+            </button>
+            {visibilitySaveState === 'saved' && (
+              <div className="mt-3 px-4 py-2 bg-green-100 text-green-800 rounded-md text-sm font-medium">
+                ✓ 保存しました(既存の非公開店舗にも反映しました)
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">

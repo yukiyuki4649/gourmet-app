@@ -347,6 +347,13 @@ export default function App() {
         onSaved={setPersonalSettings}
         isSignedIn={!!authUser}
         canEdit={canEdit}
+        currentUid={authUser?.uid ?? null}
+        users={allUsers}
+        defaultVisibleToUids={profile?.defaultVisibleToUids ?? []}
+        onVisibilityDefaultsSaved={async uids => {
+          setProfile(prev => (prev ? { ...prev, defaultVisibleToUids: uids } : prev));
+          await reloadRestaurants();
+        }}
       />
     );
   }
@@ -442,6 +449,7 @@ export default function App() {
             addedByUid={authUser?.uid ?? ''}
             defaultCenter={personalSettings.defaultCenter}
             users={allUsers}
+            defaultVisibleToUids={profile?.defaultVisibleToUids ?? []}
             allRestaurants={restaurants}
           />
         ) : (
@@ -500,7 +508,7 @@ export default function App() {
           loading={isUpdating}
           defaultCenter={personalSettings.defaultCenter}
           users={allUsers}
-          currentUid={authUser?.uid ?? null}
+          defaultVisibleToUids={profile?.defaultVisibleToUids ?? []}
           allRestaurants={restaurants}
           cuisineOptions={cuisineOptions}
           areaOptions={areaOptions}
