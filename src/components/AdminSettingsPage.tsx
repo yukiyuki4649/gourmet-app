@@ -42,7 +42,7 @@ export function AdminSettingsPage({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [saveError, setSaveError] = useState('');
 
-  // Excludes the admin themselves from 非公開グループ member pickers — an admin already
+  // Excludes the admin themselves from 限定公開グループ member pickers — an admin already
   // sees every private restaurant regardless of visibleToUids (isAdmin() in the read
   // rule), so listing themselves as a selectable "member" would be meaningless clutter.
   const otherUsers = useMemo(() => users.filter(u => u.uid !== currentUid), [users, currentUid]);
@@ -290,7 +290,7 @@ export function AdminSettingsPage({
     setSaveState('idle');
   };
 
-  // --- 非公開グループ (draft) — who a private restaurant can be shared with, managed
+  // --- 限定公開グループ (draft) — who a private restaurant can be shared with, managed
   // centrally instead of per-restaurant. Only admins can edit this; membership edits
   // take effect on already-saved restaurants via resyncPrivateRestaurantsWithVisibilityGroups
   // once "設定をすべて保存" is clicked.
@@ -437,7 +437,7 @@ export function AdminSettingsPage({
 
         {isAdmin && (
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-bold mb-2">非公開グループ管理</h2>
+            <h2 className="text-lg font-bold mb-2">限定公開グループ管理</h2>
             <p className="text-sm text-gray-600 mb-4">
               店舗を「非公開」にしたとき、誰に見せるかをグループ単位で選べるようにします。グループは複数作成でき、名前は自由に付けられます。
               メンバーを変更して「設定をすべて保存」を押すと、既にそのグループを使っている非公開店舗にもすぐ反映されます。

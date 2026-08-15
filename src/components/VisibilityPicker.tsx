@@ -9,7 +9,7 @@ interface VisibilityPickerProps {
 }
 
 // Who can see a private restaurant is chosen by picking one or more named groups
-// (managed centrally in 管理者設定 → 非公開グループ管理), not by hand-picking
+// (managed centrally in 管理者設定 → 限定公開グループ管理), not by hand-picking
 // individual people per-restaurant.
 export function VisibilityPicker({ visibility, groups, selectedGroupIds, onChange }: VisibilityPickerProps) {
   const toggleGroup = (groupId: string) => {
@@ -52,7 +52,7 @@ export function VisibilityPicker({ visibility, groups, selectedGroupIds, onChang
           <p className="text-xs text-gray-500 mb-2">この店舗を見せるグループを選んでください(複数可)</p>
           {groups.length === 0 ? (
             <p className="text-xs text-gray-400">
-              非公開グループがまだありません。管理者設定の「非公開グループ管理」から作成してください。
+              限定公開グループがまだありません。管理者設定の「限定公開グループ管理」から作成してください。
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">

@@ -105,7 +105,7 @@ export default function App() {
   const isAdmin = profile?.role === 'admin';
   const canManageCategories = isAdmin || profile?.permissions?.manageCategories === true;
 
-  // Name+uid only (no email/role) — used to populate the admin-only "非公開グループ管理"
+  // Name+uid only (no email/role) — used to populate the admin-only "限定公開グループ管理"
   // member picker (see AdminSettingsPage).
   const [allUsers, setAllUsers] = useState<UsernameEntry[]>([]);
   useEffect(() => {
