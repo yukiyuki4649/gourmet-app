@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Restaurant, RestaurantPhotos } from '../types/restaurant';
 import { googleMapsSearchUrl } from '../lib/mapsLink';
 import { isSafeHref } from '../lib/safeUrl';
@@ -54,7 +54,36 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
     const [photos, setPhotos] = useState<RestaurantPhotos | null>(null);
     const [photosLoading, setPhotosLoading] = useState(false);
 
-    const shouldShowPhotos = isSelected || isDesktop;
+    // Tap-to-load alone felt slow (the fetch only starts after the tap). Instead, start
+    // loading as soon as the card scrolls into view — by the time it's actually tapped,
+    // the photo is usually already loaded or in flight. Desktop already loads everything
+    // up front (see isDesktop below), so it doesn't need to be observed at all.
+    const [isVisible, setIsVisible] = useState(false);
+    const cardElRef = useRef<HTMLDivElement | null>(null);
+    const setRefs = (node: HTMLDivElement | null) => {
+      cardElRef.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    };
+
+    useEffect(() => {
+      if (isDesktop || isVisible) return;
+      const el = cardElRef.current;
+      if (!el) return;
+      const observer = new IntersectionObserver(
+        entries => {
+          if (entries[0]?.isIntersecting) {
+            setIsVisible(true);
+            observer.disconnect();
+          }
+        },
+        { rootMargin: '300px 0px' },
+      );
+      observer.observe(el);
+      return () => observer.disconnect();
+    }, [isDesktop, isVisible]);
+
+    const shouldShowPhotos = isSelected || isDesktop || isVisible;
 
     useEffect(() => {
       if (!shouldShowPhotos || !restaurant.hasPhotos || photos) return;
@@ -74,7 +103,7 @@ export const RestaurantCard = forwardRef<HTMLDivElement, RestaurantCardProps>(
 
     return (
       <div
-        ref={ref}
+        ref={setRefs}
         onClick={() => onSelect?.(restaurant)}
         className={`p-4 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-yellow-50 ring-2 ring-inset ring-yellow-400' : ''}`}
       >
