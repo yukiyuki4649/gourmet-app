@@ -139,13 +139,19 @@ export function Dashboard({
       rating: ratingFilter,
     });
 
-    // 表示順は常に評価順(未評価はAのすぐ下、B以下より上)。
+    // 表示順は常に評価順(未評価はAのすぐ下、B以下より上)。同じ評価内の順序は毎回ランダム
+    // にするため、比較関数の中で直接Math.random()を呼ぶのではなく(呼び出しごとに結果が
+    // 変わり、ソートが不安定/未定義動作になりうる)、事前に1店舗ずつ乱数キーを振ってから
+    // そのキーで安定的にソートする。
     const ratingOrder = { A: 5, '': 4, B: 3, C: 2, D: 1 };
-    return [...result].sort(
-      (a, b) =>
-        (ratingOrder[b.overallRating as keyof typeof ratingOrder] ?? 0) -
-        (ratingOrder[a.overallRating as keyof typeof ratingOrder] ?? 0),
-    );
+    const withRandomKey = result.map(r => ({ r, rand: Math.random() }));
+    withRandomKey.sort((a, b) => {
+      const ratingDiff =
+        (ratingOrder[b.r.overallRating as keyof typeof ratingOrder] ?? 0) -
+        (ratingOrder[a.r.overallRating as keyof typeof ratingOrder] ?? 0);
+      return ratingDiff !== 0 ? ratingDiff : a.rand - b.rand;
+    });
+    return withRandomKey.map(({ r }) => r);
   }, [restaurants, effectiveAreas, effectiveCuisines, personFilter, lunchFilter, ratingFilter]);
 
   const allFilteredChecked = filtered.length > 0 && filtered.every(r => checkedIds.has(r.id));
