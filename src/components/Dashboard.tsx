@@ -12,6 +12,7 @@ import {
   sortByOrder,
 } from '../lib/categories';
 import { applyRestaurantFilters, LunchFilter } from '../lib/filters';
+import { VisibilityGroup } from '../lib/appSettings';
 
 interface DashboardProps {
   restaurants: Restaurant[];
@@ -21,6 +22,7 @@ interface DashboardProps {
   selectedId?: string | null;
   categories: AreaCategory[];
   cuisineCategories: CuisineCategory[];
+  visibilityGroups: VisibilityGroup[];
   areaOrder: string[];
   cuisineOrder: string[];
   areaFilter: string;
@@ -44,6 +46,7 @@ export function Dashboard({
   selectedId,
   categories,
   cuisineCategories,
+  visibilityGroups,
   areaOrder,
   cuisineOrder,
   areaFilter,
@@ -172,6 +175,7 @@ export function Dashboard({
           <BulkEditBar
             count={checkedIds.size}
             areaOptions={areas}
+            visibilityGroups={visibilityGroups}
             onClear={() => setCheckedIds(new Set())}
             onApply={async patch => {
               await onBulkUpdate(Array.from(checkedIds), patch);

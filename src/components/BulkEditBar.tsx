@@ -1,21 +1,25 @@
 import { useState } from 'react';
-import { Restaurant, Visibility } from '../types/restaurant';
+import { Restaurant } from '../types/restaurant';
+import { VisibilityGroup } from '../lib/appSettings';
 
 const NO_CHANGE = '__no_change__';
+const PUBLIC = '__public__';
+const GROUP_PREFIX = 'group:';
 
 interface BulkEditBarProps {
   count: number;
   areaOptions: string[];
+  visibilityGroups: VisibilityGroup[];
   onApply: (patch: Partial<Restaurant>) => Promise<void> | void;
   onClear: () => void;
 }
 
-export function BulkEditBar({ count, areaOptions, onApply, onClear }: BulkEditBarProps) {
+export function BulkEditBar({ count, areaOptions, visibilityGroups, onApply, onClear }: BulkEditBarProps) {
   const [area, setArea] = useState(NO_CHANGE);
   const [tasteRating, setTasteRating] = useState(NO_CHANGE);
   const [valuRating, setValuRating] = useState(NO_CHANGE);
   const [overallRating, setOverallRating] = useState(NO_CHANGE);
-  const [visibility, setVisibility] = useState(NO_CHANGE);
+  const [visibilityChoice, setVisibilityChoice] = useState(NO_CHANGE);
   const [applying, setApplying] = useState(false);
 
   const hasAnyChange =
@@ -23,7 +27,7 @@ export function BulkEditBar({ count, areaOptions, onApply, onClear }: BulkEditBa
     tasteRating !== NO_CHANGE ||
     valuRating !== NO_CHANGE ||
     overallRating !== NO_CHANGE ||
-    visibility !== NO_CHANGE;
+    visibilityChoice !== NO_CHANGE;
 
   const handleApply = async () => {
     const patch: Partial<Restaurant> = {};
@@ -31,7 +35,20 @@ export function BulkEditBar({ count, areaOptions, onApply, onClear }: BulkEditBa
     if (tasteRating !== NO_CHANGE) patch.tasteRating = tasteRating;
     if (valuRating !== NO_CHANGE) patch.valuRating = valuRating;
     if (overallRating !== NO_CHANGE) patch.overallRating = overallRating;
-    if (visibility !== NO_CHANGE) patch.visibility = visibility as Visibility;
+
+    if (visibilityChoice === PUBLIC) {
+      patch.visibility = 'public';
+      patch.visibilityGroupIds = [];
+      patch.visibleToUids = [];
+    } else if (visibilityChoice.startsWith(GROUP_PREFIX)) {
+      const groupId = visibilityChoice.slice(GROUP_PREFIX.length);
+      const group = visibilityGroups.find(g => g.id === groupId);
+      if (group) {
+        patch.visibility = 'private';
+        patch.visibilityGroupIds = [groupId];
+        patch.visibleToUids = group.uids;
+      }
+    }
 
     if (Object.keys(patch).length === 0) return;
     if (!window.confirm(`選択中の${count}件をまとめて変更しますか?`)) return;
@@ -43,7 +60,7 @@ export function BulkEditBar({ count, areaOptions, onApply, onClear }: BulkEditBa
       setTasteRating(NO_CHANGE);
       setValuRating(NO_CHANGE);
       setOverallRating(NO_CHANGE);
-      setVisibility(NO_CHANGE);
+      setVisibilityChoice(NO_CHANGE);
     } finally {
       setApplying(false);
     }
@@ -92,10 +109,18 @@ export function BulkEditBar({ count, areaOptions, onApply, onClear }: BulkEditBa
           <option value="D">総合評価: D</option>
         </select>
 
-        <select value={visibility} onChange={e => setVisibility(e.target.value)} className="px-2 py-1.5 text-sm border border-gray-300 rounded-md">
+        <select
+          value={visibilityChoice}
+          onChange={e => setVisibilityChoice(e.target.value)}
+          className="px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+        >
           <option value={NO_CHANGE}>公開範囲: 変更しない</option>
-          <option value="public">公開にする</option>
-          <option value="private">非公開にする</option>
+          <option value={PUBLIC}>公開にする</option>
+          {visibilityGroups.map(g => (
+            <option key={g.id} value={`${GROUP_PREFIX}${g.id}`}>
+              非公開({g.name}に共有)
+            </option>
+          ))}
         </select>
       </div>
 

@@ -415,6 +415,7 @@ export default function App() {
             selectedId={selectedId}
             categories={appSettings.categories}
             cuisineCategories={appSettings.cuisineCategories}
+            visibilityGroups={appSettings.visibilityGroups}
             areaOrder={appSettings.areaOrder}
             cuisineOrder={appSettings.cuisineOrder}
             areaFilter={areaFilter}
