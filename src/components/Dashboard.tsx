@@ -180,7 +180,7 @@ export function Dashboard({
           />
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">並べ替え</label>
             <select
@@ -195,7 +195,20 @@ export function Dashboard({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">エリア・カテゴリで絞り込み</label>
+            <label className="block text-sm font-medium mb-2">ランチで絞り込み</label>
+            <select
+              value={lunchFilter}
+              onChange={e => onLunchFilterChange(e.target.value as LunchFilter)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">すべて</option>
+              <option value="lunch">ランチがお得</option>
+              <option value="notLunch">それ以外</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">エリアで絞り込み</label>
             <select
               value={areaFilter}
               onChange={e => onAreaFilterChange(e.target.value)}
@@ -234,20 +247,7 @@ export function Dashboard({
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">ランチで絞り込み</label>
-            <select
-              value={lunchFilter}
-              onChange={e => onLunchFilterChange(e.target.value as LunchFilter)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">すべて</option>
-              <option value="lunch">ランチのみ</option>
-              <option value="notLunch">ランチ以外</option>
-            </select>
-          </div>
-
-          <div>
+          <div className="col-span-2 md:col-span-2 lg:col-span-1">
             <label className="block text-sm font-medium mb-2">件数</label>
             <div className="px-3 py-2 bg-gray-100 rounded-md">
               {filtered.length} 件
